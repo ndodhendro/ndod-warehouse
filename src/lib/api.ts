@@ -1,0 +1,320 @@
+import type {
+  Barang,
+  BarangInput,
+  BarisEkspor,
+  Dus,
+  DusInput,
+  IsiBarang,
+  IsiDus,
+  ItemPindah,
+  JenisBarang,
+  JenisRiwayat,
+  RiwayatItem,
+  SebaranDus,
+} from "../types"
+import { bandingKode, kosongJadiNull, labelJenis, normKode, normTeks } from "./format"
+import { db } from "./supabase"
+
+type Row = Record<string, unknown>
+
+function angka(nilai: unknown) {
+  const hasil = Number(nilai)
+  return Number.isFinite(hasil) ? hasil : 0
+}
+
+function teks(nilai: unknown) {
+  return typeof nilai === "string" ? nilai : null
+}
+
+function objek<T>(nilai: unknown): T | null {
+  if (Array.isArray(nilai)) return (nilai[0] as T | undefined) ?? null
+  if (nilai && typeof nilai === "object") return nilai as T
+  return null
+}
+
+function jenisBarang(nilai: unknown): JenisBarang {
+  if (nilai === "tas" || nilai === "botol" || nilai === "kotak") return nilai
+  throw new Error("Jenis barang tidak dikenali.")
+}
+
+function jenisRiwayat(nilai: unknown): JenisRiwayat {
+  if (nilai === "masuk" || nilai === "keluar" || nilai === "pindah" || nilai === "koreksi") return nilai
+  throw new Error("Jenis riwayat tidak dikenali.")
+}
+
+function mapBarangRingkas(row: Row): IsiBarang {
+  return {
+    id: String(row.id),
+    kode: String(row.kode),
+    jenis: jenisBarang(row.jenis),
+    model: String(row.model),
+    warna: String(row.warna),
+  }
+}
+
+function mapDus(row: Row): Dus {
+  return {
+    id: String(row.id),
+    kode: String(row.kode),
+    nama: teks(row.nama),
+    lokasi: teks(row.lokasi),
+    catatan: teks(row.catatan),
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+    jumlah_jenis: angka(row.jumlah_jenis),
+    total_pcs: angka(row.total_pcs),
+  }
+}
+
+function mapBarang(row: Row): Barang {
+  return {
+    ...mapBarangRingkas(row),
+    catatan: teks(row.catatan),
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+    jumlah_dus: angka(row.jumlah_dus),
+    total_pcs: angka(row.total_pcs),
+  }
+}
+
+export async function listDus() {
+  const { data, error } = await db().from("v_dus_ringkas").select("*")
+  if (error) throw error
+  return ((data ?? []) as Row[]).map(mapDus).sort((a, b) => bandingKode(a.kode, b.kode))
+}
+
+export async function getDus(id: string) {
+  const { data, error } = await db().from("v_dus_ringkas").select("*").eq("id", id).maybeSingle()
+  if (error) throw error
+  return data ? mapDus(data as Row) : null
+}
+
+export async function listIsiDus(dusId: string) {
+  const { data, error } = await db()
+    .from("isi_dus")
+    .select("id, dus_id, barang_id, jumlah, barang:barang_id(id, kode, jenis, model, warna)")
+    .eq("dus_id", dusId)
+  if (error) throw error
+  return ((data ?? []) as Row[])
+    .map((row) => {
+      const barang = objek<Row>(row.barang)
+      if (!barang) throw new Error("Data barang di dalam dus tidak lengkap.")
+      return {
+        id: String(row.id),
+        dus_id: String(row.dus_id),
+        barang_id: String(row.barang_id),
+        jumlah: angka(row.jumlah),
+        barang: mapBarangRingkas(barang),
+      } satisfies IsiDus
+    })
+    .sort((a, b) => bandingKode(a.barang.kode, b.barang.kode))
+}
+
+export async function simpanDus(id: string | null, input: DusInput) {
+  const payload = {
+    kode: normKode(input.kode),
+    nama: kosongJadiNull(input.nama),
+    lokasi: kosongJadiNull(input.lokasi),
+    catatan: kosongJadiNull(input.catatan),
+  }
+  if (!payload.kode) throw new Error("Kode dus wajib diisi.")
+  if (id) {
+    const { error } = await db().from("dus").update(payload).eq("id", id)
+    if (error) throw error
+    return id
+  }
+  const { data, error } = await db().from("dus").insert(payload).select("id").single()
+  if (error) throw error
+  return String((data as Row).id)
+}
+
+export async function hapusDus(id: string) {
+  const { error } = await db().from("dus").delete().eq("id", id)
+  if (error) throw error
+}
+
+export async function listBarang() {
+  const { data, error } = await db().from("v_barang_ringkas").select("*")
+  if (error) throw error
+  return ((data ?? []) as Row[]).map(mapBarang).sort((a, b) => {
+    const jenis = labelUrut(a.jenis).localeCompare(labelUrut(b.jenis), "id")
+    if (jenis !== 0) return jenis
+    const model = a.model.localeCompare(b.model, "id", { sensitivity: "base" })
+    if (model !== 0) return model
+    return a.warna.localeCompare(b.warna, "id", { sensitivity: "base" })
+  })
+}
+
+function labelUrut(jenis: JenisBarang) {
+  if (jenis === "tas") return "0"
+  if (jenis === "botol") return "1"
+  return "2"
+}
+
+export async function getBarang(id: string) {
+  const { data, error } = await db().from("v_barang_ringkas").select("*").eq("id", id).maybeSingle()
+  if (error) throw error
+  return data ? mapBarang(data as Row) : null
+}
+
+export async function listSebaran(barangId: string) {
+  const { data, error } = await db()
+    .from("isi_dus")
+    .select("id, jumlah, dus:dus_id(id, kode, nama, lokasi)")
+    .eq("barang_id", barangId)
+  if (error) throw error
+  return ((data ?? []) as Row[])
+    .map((row) => {
+      const dus = objek<Row>(row.dus)
+      if (!dus) throw new Error("Data dus untuk barang ini tidak lengkap.")
+      return {
+        id: String(row.id),
+        jumlah: angka(row.jumlah),
+        dus: {
+          id: String(dus.id),
+          kode: String(dus.kode),
+          nama: teks(dus.nama),
+          lokasi: teks(dus.lokasi),
+        },
+      } satisfies SebaranDus
+    })
+    .sort((a, b) => bandingKode(a.dus.kode, b.dus.kode))
+}
+
+export async function simpanBarang(id: string | null, input: BarangInput) {
+  const model = normTeks(input.model)
+  const payload = {
+    kode: normKode(model),
+    jenis: input.jenis,
+    model,
+    warna: normTeks(input.warna),
+    catatan: kosongJadiNull(input.catatan),
+  }
+  if (!payload.model) throw new Error("Model wajib diisi.")
+  if (!payload.warna) throw new Error("Warna wajib diisi.")
+  if (payload.jenis !== "tas" && payload.jenis !== "botol" && payload.jenis !== "kotak") throw new Error("Pilih jenis barang.")
+  if (id) {
+    const { error } = await db().from("barang").update(payload).eq("id", id)
+    if (error) throw error
+    return id
+  }
+  const { data, error } = await db().from("barang").insert(payload).select("id").single()
+  if (error) throw error
+  return String((data as Row).id)
+}
+
+export async function hapusBarang(id: string) {
+  const { error } = await db().from("barang").delete().eq("id", id)
+  if (error) throw error
+}
+
+export async function tambahIsi(dusId: string, barangId: string, jumlah: number, keterangan?: string) {
+  const { error } = await db().rpc("tambah_isi", {
+    p_dus_id: dusId,
+    p_barang_id: barangId,
+    p_jumlah: jumlah,
+    p_keterangan: keterangan?.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function setJumlahIsi(dusId: string, barangId: string, jumlah: number, keterangan?: string) {
+  const { error } = await db().rpc("set_jumlah_isi", {
+    p_dus_id: dusId,
+    p_barang_id: barangId,
+    p_jumlah: jumlah,
+    p_keterangan: keterangan?.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function pindahSebagian(asal: string, tujuan: string, item: ItemPindah[], keterangan?: string) {
+  const { error } = await db().rpc("pindah_sebagian", {
+    p_dus_asal: asal,
+    p_dus_tujuan: tujuan,
+    p_item: item,
+    p_keterangan: keterangan?.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function pindahSemua(asal: string, tujuan: string, keterangan?: string) {
+  const { error } = await db().rpc("pindah_semua_isi", {
+    p_dus_asal: asal,
+    p_dus_tujuan: tujuan,
+    p_keterangan: keterangan?.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function listRiwayat() {
+  const { data, error } = await db()
+    .from("riwayat")
+    .select(
+      "id, jenis, jumlah, keterangan, created_at, barang_kode, barang_label, dus_asal_kode, dus_tujuan_kode, barang:barang_id(id, kode, jenis, model, warna), asal:dus!riwayat_dus_asal_id_fkey(id, kode), tujuan:dus!riwayat_dus_tujuan_id_fkey(id, kode)",
+    )
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (error) throw error
+  return ((data ?? []) as Row[]).map((row) => {
+    const barang = objek<Row>(row.barang)
+    const asal = objek<Row>(row.asal)
+    const tujuan = objek<Row>(row.tujuan)
+    return {
+      id: String(row.id),
+      jenis: jenisRiwayat(row.jenis),
+      jumlah: angka(row.jumlah),
+      keterangan: teks(row.keterangan),
+      created_at: String(row.created_at),
+      barang_kode: teks(row.barang_kode),
+      barang_label: teks(row.barang_label),
+      dus_asal_kode: teks(row.dus_asal_kode),
+      dus_tujuan_kode: teks(row.dus_tujuan_kode),
+      barang: barang ? mapBarangRingkas(barang) : null,
+      asal: asal ? { id: String(asal.id), kode: String(asal.kode) } : null,
+      tujuan: tujuan ? { id: String(tujuan.id), kode: String(tujuan.kode) } : null,
+    } satisfies RiwayatItem
+  })
+}
+
+export async function cariKode(kode: string) {
+  const normal = normKode(kode)
+  if (!normal) return { dus: null as Dus | null, barang: [] as Barang[] }
+  const [dusRes, barangRes] = await Promise.all([
+    db().from("v_dus_ringkas").select("*").eq("kode", normal).maybeSingle(),
+    db().from("v_barang_ringkas").select("*").eq("kode", normal),
+  ])
+  if (dusRes.error) throw dusRes.error
+  if (barangRes.error) throw barangRes.error
+  const barang = ((barangRes.data ?? []) as Row[])
+    .map(mapBarang)
+    .sort((a, b) => a.warna.localeCompare(b.warna, "id", { sensitivity: "base" }) || bandingKode(a.model, b.model))
+  return {
+    dus: dusRes.data ? mapDus(dusRes.data as Row) : null,
+    barang,
+  }
+}
+
+export async function ambilSebaranEkspor() {
+  const { data, error } = await db()
+    .from("isi_dus")
+    .select("jumlah, dus:dus_id(kode, lokasi), barang:barang_id(kode, jenis, model, warna)")
+  if (error) throw error
+  return ((data ?? []) as Row[])
+    .map((row) => {
+      const dus = objek<Row>(row.dus)
+      const barang = objek<Row>(row.barang)
+      if (!dus || !barang) return null
+      return {
+        dus_kode: String(dus.kode),
+        dus_lokasi: teks(dus.lokasi) ?? "",
+        barang_kode: String(barang.kode),
+        jenis: labelJenis(jenisBarang(barang.jenis)),
+        model: String(barang.model),
+        warna: String(barang.warna),
+        jumlah: angka(row.jumlah),
+      } satisfies BarisEkspor
+    })
+    .filter((baris): baris is BarisEkspor => baris !== null)
+    .sort((a, b) => bandingKode(a.dus_kode, b.dus_kode) || bandingKode(a.barang_kode, b.barang_kode))
+}
