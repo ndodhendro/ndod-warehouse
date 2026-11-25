@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { MapPin, Minus, Pencil, Plus } from "lucide-react"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, LinkButton, Loading, PageHeader, SearchField, Sheet, useConfirm, useToast } from "../components/ui"
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, FormActions, LinkButton, Loading, PageHeader, SearchField, Sheet, useConfirm, useToast } from "../components/ui"
 import { setJumlahIsi, tambahIsi } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { formatAngka, labelBarang, labelJenis } from "../lib/format"
@@ -125,19 +125,13 @@ export function DusDetail() {
       )}
 
       {kotor && (
-        <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 mt-4 flex gap-2 md:bottom-4">
-          <Button
-            variant="ghost"
-            className="min-w-0 flex-1"
-            disabled={simpan.isPending}
-            onClick={() => setDraft(Object.fromEntries(baris.map((row) => [row.barang_id, row.jumlah])))}
-          >
-            Batal
-          </Button>
-          <Button
-            className="min-w-0 flex-1"
-            disabled={simpan.isPending}
-            onClick={async () => {
+        <div className="sticky bottom-3 z-20 -mx-4 mt-4 bg-ink-950 px-4 py-3 md:bottom-4 md:mx-0 md:px-0">
+          <FormActions
+            cancelClassName="!bg-ink-800 hover:!bg-ink-700"
+            pending={simpan.isPending}
+            submitType="button"
+            onCancel={() => setDraft(Object.fromEntries(baris.map((row) => [row.barang_id, row.jumlah])))}
+            onSubmit={async () => {
               const adaYangKeluar = baris.some((row) => (draft?.[row.barang_id] ?? row.jumlah) === 0 && row.jumlah !== 0)
               if (adaYangKeluar) {
                 const ya = await confirm({
@@ -150,9 +144,8 @@ export function DusDetail() {
               }
               simpan.mutate()
             }}
-          >
-            {simpan.isPending ? "Menyimpan..." : "Simpan perubahan jumlah"}
-          </Button>
+            submitLabel="Simpan"
+          />
         </div>
       )}
 
@@ -252,9 +245,7 @@ function TambahKeDus({
             <input className="field" placeholder="Opsional" value={catatan} maxLength={200} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
           {galat && <p className="text-sm text-clay-400">{galat}</p>}
-          <Button type="submit" className="w-full" disabled={simpan.isPending}>
-            {simpan.isPending ? "Menyimpan..." : "Masukkan ke dus"}
-          </Button>
+          <FormActions onCancel={onClose} pending={simpan.isPending} submitLabel="Masukkan ke dus" />
         </form>
       )}
     </Sheet>

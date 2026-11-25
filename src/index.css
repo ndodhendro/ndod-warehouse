@@ -4,12 +4,24 @@
 
 :root {
   color-scheme: dark;
+  /* Tinggi menu bawah sebelum diukur. Menu mengukur tinggi aslinya, termasuk safe area. */
+  --tinggi-nav-bawah: calc(6.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 html,
 body,
 #root {
   min-height: 100%;
+}
+
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 body {

@@ -104,6 +104,9 @@ export function KartuRiwayat({ item }: { item: RiwayatItem }) {
         <div className="text-right">
           <p className="font-semibold tabular-nums">{jumlah}</p>
           <p className="mt-1 text-xs text-mist-500">{formatWaktu(item.created_at)}</p>
+          <p className="mt-0.5 max-w-[9rem] truncate text-xs text-mist-500" title={item.pengguna_email ?? undefined}>
+            {item.pengguna_nama || item.pengguna_email || "Sebelum login"}
+          </p>
         </div>
       </div>
       {(item.asal || item.tujuan || item.barang) && (

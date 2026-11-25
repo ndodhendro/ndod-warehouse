@@ -251,7 +251,7 @@ export async function listRiwayat() {
   const { data, error } = await db()
     .from("riwayat")
     .select(
-      "id, jenis, jumlah, keterangan, created_at, barang_kode, barang_label, dus_asal_kode, dus_tujuan_kode, barang:barang_id(id, kode, jenis, model, warna), asal:dus!riwayat_dus_asal_id_fkey(id, kode), tujuan:dus!riwayat_dus_tujuan_id_fkey(id, kode)",
+      "id, jenis, jumlah, keterangan, created_at, barang_kode, barang_label, dus_asal_kode, dus_tujuan_kode, pengguna_email, pengguna_nama, barang:barang_id(id, kode, jenis, model, warna), asal:dus!riwayat_dus_asal_id_fkey(id, kode), tujuan:dus!riwayat_dus_tujuan_id_fkey(id, kode)",
     )
     .order("created_at", { ascending: false })
     .limit(200)
@@ -273,6 +273,8 @@ export async function listRiwayat() {
       barang: barang ? mapBarangRingkas(barang) : null,
       asal: asal ? { id: String(asal.id), kode: String(asal.kode) } : null,
       tujuan: tujuan ? { id: String(tujuan.id), kode: String(tujuan.kode) } : null,
+      pengguna_email: teks(row.pengguna_email),
+      pengguna_nama: teks(row.pengguna_nama),
     } satisfies RiwayatItem
   })
 }

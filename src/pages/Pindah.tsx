@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Minus, Plus } from "lucide-react"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { Button, EmptyState, ErrorBox, Field, Loading, PageHeader, useToast } from "../components/ui"
+import { EmptyState, ErrorBox, Field, FormActions, Loading, PageHeader, useToast } from "../components/ui"
 import { pindahSebagian, pindahSemua } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { formatAngka, labelJenis } from "../lib/format"
@@ -224,9 +224,12 @@ export function Pindah() {
           <Field label="Catatan" hint="Opsional. Misalnya pindah rak atau gabung dus.">
             <input className="field" placeholder="Opsional" maxLength={200} value={catatan} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
-          <Button type="submit" className="w-full" disabled={simpan.isPending}>
-            {simpan.isPending ? "Memindahkan..." : seluruhIsi ? "Pindahkan seluruh isi" : fokus ? "Pindahkan" : "Pindahkan yang dipilih"}
-          </Button>
+          <FormActions
+            onCancel={() => navigate(awal ? `/barang/${awal}` : `/dus/${id}`)}
+            pending={simpan.isPending}
+            pendingLabel="Memindahkan..."
+            submitLabel={seluruhIsi ? "Pindahkan seluruh isi" : fokus ? "Pindahkan" : "Pindahkan yang dipilih"}
+          />
         </form>
       )}
     </div>

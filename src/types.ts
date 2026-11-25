@@ -66,6 +66,8 @@ export interface RiwayatItem {
   barang: IsiBarang | null
   asal: { id: string; kode: string } | null
   tujuan: { id: string; kode: string } | null
+  pengguna_email: string | null
+  pengguna_nama: string | null
 }
 
 export interface DusInput {

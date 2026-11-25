@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Button, ErrorBox, Field, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
+import { Button, ErrorBox, Field, FormActions, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
 import { hapusBarang, simpanBarang } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { useBarang, useBarangList } from "../lib/queries"
@@ -111,9 +111,11 @@ export function BarangForm() {
         <Field label="Catatan">
           <textarea className="field min-h-24" placeholder="Opsional" maxLength={500} value={form.catatan} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
         </Field>
-        <Button type="submit" className="w-full" disabled={simpan.isPending}>
-          {simpan.isPending ? "Menyimpan..." : "Simpan"}
-        </Button>
+        <FormActions
+          onCancel={() => navigate(id ? `/barang/${id}` : "/barang")}
+          pending={simpan.isPending}
+          submitLabel="Simpan"
+        />
       </form>
       {id && (
         <div className="mt-8 border-t border-white/10 pt-5">

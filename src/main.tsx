@@ -14,6 +14,7 @@ import "./index.css"
 import "./lib/pasang"
 import App from "./App"
 import { ConfirmProvider, ToastProvider } from "./components/ui"
+import { SesiProvider } from "./lib/sesi"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,13 +28,15 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <ConfirmProvider>
-          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <App />
-          </BrowserRouter>
-        </ConfirmProvider>
-      </ToastProvider>
+      <SesiProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <App />
+            </BrowserRouter>
+          </ConfirmProvider>
+        </ToastProvider>
+      </SesiProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

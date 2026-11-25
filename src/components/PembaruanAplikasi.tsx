@@ -97,7 +97,7 @@ export function DialogPembaruan({
       <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-ink-900 p-5 shadow-card" role="alertdialog" aria-modal="true" aria-labelledby="judul-pembaruan">
         <h2 id="judul-pembaruan" className="text-lg font-semibold">Ada versi baru</h2>
         <p className="mt-2 text-sm text-mist-300">
-          Pembaruan sudah siap. Perbarui sekarang akan memuat ulang halaman, jadi isian yang belum disimpan akan hilang. Pilih nanti kalau kamu masih mengisi data.
+          Perbarui sekarang akan memuat ulang halaman, jadi isian yang belum disimpan akan hilang. Pilih nanti kalau kamu masih mengisi data.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={onNanti} disabled={memuat} autoFocus>

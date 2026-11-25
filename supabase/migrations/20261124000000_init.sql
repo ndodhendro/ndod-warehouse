@@ -3,8 +3,8 @@
 -- Tidak ada hierarki toko. Satu barang = satu kombinasi jenis + model + warna.
 -- Stok barang yang sama boleh tersebar di lebih dari satu dus.
 --
--- Aplikasi tidak memakai login. Peran anon boleh membaca dan mengubah data.
--- Jangan mempublikasikan URL aplikasi ini ke internet umum.
+-- Login Google dan penutupan peran anon ada di migrasi 20261125120000_login_google.sql.
+-- Sebelum migrasi itu, peran anon boleh membaca dan mengubah data.
 
 create extension if not exists pgcrypto;
 

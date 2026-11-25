@@ -1,9 +1,10 @@
-import { NavLink, Outlet } from "react-router-dom"
-import { useEffect, useState } from "react"
-import { Box, Download, Package, ScrollText } from "lucide-react"
+import { NavLink, Outlet, useLocation } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { Box, Download, LogOut, Package, ScrollText } from "lucide-react"
 import { usePasangAplikasi } from "../lib/pasang"
 import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
-import { Sheet, cn } from "./ui"
+import { Sheet, cn, useConfirm } from "./ui"
+import { useSesi } from "../lib/sesi"
 
 const menu = [
   { to: "/dus", label: "Dus", icon: Box, end: false },
@@ -19,15 +20,21 @@ function tautanClass(active: boolean) {
 }
 
 export function AppShell() {
+  const lokasi = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   const pembaruan = usePembaruanAplikasi()
   const pasang = usePasangAplikasi()
   const perbarui = pembaruan.tampilkanTombol ? pembaruan.perbarui : undefined
   const pasangAplikasi = pasang.tampilkan ? pasang.pasang : undefined
 
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0)
+  }, [lokasi.pathname])
+
   return (
-    <div className="min-h-dvh bg-ink-950 text-mist-100">
+    <div className="flex h-dvh flex-col overflow-hidden bg-ink-950 text-mist-100 md:block md:h-auto md:min-h-dvh md:overflow-visible">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(900px_420px_at_0%_-10%,rgba(227,155,43,0.16),transparent_55%),radial-gradient(700px_380px_at_100%_0%,rgba(46,174,147,0.1),transparent_50%)]" />
-      <div className="relative mx-auto grid min-h-dvh max-w-6xl md:grid-cols-[232px_minmax(0,1fr)]">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col md:grid md:min-h-dvh md:grid-cols-[232px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-dvh flex-col border-r border-white/10 px-4 py-6 md:flex">
           <Merek />
           <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Navigasi utama">
@@ -38,7 +45,8 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <footer className="space-y-2 px-1">
+          <footer className="space-y-3 px-1">
+            <AkunMasuk />
             <p className="text-xs leading-relaxed text-mist-500">Stok tas, botol minum, dan kotak makan, dicatat per dus.</p>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <VersiAplikasi onPerbarui={perbarui} />
@@ -46,9 +54,12 @@ export function AppShell() {
             </div>
           </footer>
         </aside>
-        <div className="min-w-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:block">
           <OfflineBanner />
-          <main className="px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 md:pb-12 md:pt-8">
+          <main
+            ref={mainRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-6 pt-[max(1.25rem,env(safe-area-inset-top))] md:overflow-visible md:px-8 md:pb-12 md:pt-8"
+          >
             <Outlet />
           </main>
         </div>
@@ -72,7 +83,6 @@ function Merek() {
       <img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
       <span>
         <span className="block text-sm font-semibold">Ndod Warehouse</span>
-        <span className="block text-xs text-mist-500">Tas, botol & kotak</span>
       </span>
     </div>
   )
@@ -109,12 +119,32 @@ function TombolPasang({ onClick }: { onClick: () => void }) {
 }
 
 function MobileNav({ onPerbarui, onPasang }: { onPerbarui?: () => void; onPasang?: () => void }) {
+  const navRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const ukur = () => {
+      const tinggi = Math.ceil(nav.getBoundingClientRect().height)
+      if (tinggi > 0) document.documentElement.style.setProperty("--tinggi-nav-bawah", `${tinggi}px`)
+    }
+    ukur()
+    const pengamat = new ResizeObserver(ukur)
+    pengamat.observe(nav)
+    return () => {
+      pengamat.disconnect()
+      document.documentElement.style.removeProperty("--tinggi-nav-bawah")
+    }
+  }, [])
+
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink-950/90 backdrop-blur md:hidden"
+      ref={navRef}
+      className="z-30 shrink-0 border-t border-white/10 bg-ink-950/95 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigasi utama"
     >
+      <AkunMasuk rapat />
       <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 pb-1 pt-1.5">
         <span />
         <VersiAplikasi onPerbarui={onPerbarui} className="justify-center" />
@@ -139,6 +169,47 @@ function ItemNav({ to, label, icon: Icon, end }: (typeof menu)[number]) {
         </>
       )}
     </NavLink>
+  )
+}
+
+function AkunMasuk({ rapat = false }: { rapat?: boolean }) {
+  const { email, nama, keluar } = useSesi()
+  const confirm = useConfirm()
+  const [sibuk, setSibuk] = useState(false)
+  const judul = nama || email || "Akun"
+
+  async function klik() {
+    const ya = await confirm({
+      title: "Keluar dari akun?",
+      body: "Sesi di perangkat ini dihapus. Perubahan berikutnya tercatat setelah masuk lagi.",
+      confirmLabel: "Keluar",
+      danger: true,
+    })
+    if (!ya) return
+    setSibuk(true)
+    try {
+      await keluar()
+    } catch {
+      setSibuk(false)
+    }
+  }
+
+  return (
+    <div className={cn("flex items-center gap-2", rapat ? "px-3 pt-2" : "rounded-xl bg-white/5 px-3 py-2")}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium text-mist-100">{judul}</p>
+        {nama && email && <p className="truncate text-[11px] text-mist-500">{email}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => void klik()}
+        disabled={sibuk}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-mist-300 hover:bg-white/10 disabled:opacity-50"
+      >
+        <LogOut size={13} />
+        Keluar
+      </button>
+    </div>
   )
 }
 

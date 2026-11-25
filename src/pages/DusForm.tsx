@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Button, ErrorBox, Field, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
+import { Button, ErrorBox, Field, FormActions, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
 import { hapusDus, simpanDus } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { useDus } from "../lib/queries"
@@ -94,9 +94,11 @@ export function DusForm() {
         <Field label="Catatan">
           <textarea className="field min-h-24" placeholder="Opsional" value={form.catatan} maxLength={500} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
         </Field>
-        <Button type="submit" disabled={simpan.isPending} className="w-full">
-          {simpan.isPending ? "Menyimpan..." : "Simpan"}
-        </Button>
+        <FormActions
+          onCancel={() => navigate(id ? `/dus/${id}` : "/dus")}
+          pending={simpan.isPending}
+          submitLabel="Simpan"
+        />
       </form>
       {id && (
         <div className="mt-8 border-t border-white/10 pt-5">

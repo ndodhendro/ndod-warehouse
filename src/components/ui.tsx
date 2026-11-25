@@ -53,6 +53,37 @@ export function LinkButton({
   )
 }
 
+export function FormActions({
+  onCancel,
+  cancelLabel = "Batal",
+  submitLabel,
+  pendingLabel = "Menyimpan...",
+  pending = false,
+  submitType = "submit",
+  onSubmit,
+  cancelClassName,
+}: {
+  onCancel: () => void
+  cancelLabel?: string
+  submitLabel: string
+  pendingLabel?: string
+  pending?: boolean
+  submitType?: "submit" | "button"
+  onSubmit?: () => void
+  cancelClassName?: string
+}) {
+  return (
+    <div className="flex gap-2">
+      <Button type="button" variant="ghost" className={cn("min-w-0 flex-1", cancelClassName)} disabled={pending} onClick={onCancel}>
+        {cancelLabel}
+      </Button>
+      <Button type={submitType} className="min-w-0 flex-1 whitespace-normal px-3 text-center leading-tight" disabled={pending} onClick={onSubmit}>
+        <span className="min-w-0">{pending ? pendingLabel : submitLabel}</span>
+      </Button>
+    </div>
+  )
+}
+
 export function PageHeader({
   kicker,
   title,
@@ -285,7 +316,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4 bottom-[calc(7.75rem+env(safe-area-inset-bottom))] md:bottom-6">
+      <div className="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4 bottom-[calc(var(--tinggi-nav-bawah)+4.75rem)] md:bottom-6">
         {toasts.map((toast) => (
           <div
             key={toast.id}
