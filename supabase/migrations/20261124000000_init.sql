@@ -1,4 +1,4 @@
--- Gudang Ndod, versi vanilla.
+-- Ndod Warehouse, versi vanilla.
 -- Jalankan sekali pada database yang masih kosong.
 -- Tidak ada hierarki toko. Satu barang = satu kombinasi jenis + model + warna.
 -- Stok barang yang sama boleh tersebar di lebih dari satu dus.

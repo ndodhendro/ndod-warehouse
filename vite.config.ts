@@ -19,12 +19,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon-32.png", "apple-touch-icon.png", "pwa-192.png", "pwa-512.png", "pwa-512-maskable.png"],
       manifest: {
         id: "/",
-        name: "Gudang Ndod",
-        short_name: "Gudang",
+        name: "Ndod Warehouse",
+        short_name: "Ndod Warehouse",
         description: "Cek stok dan lokasi tas, botol minum, serta kotak makan di dalam dus.",
         lang: "id",
         dir: "ltr",
@@ -43,6 +43,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: "index.html",
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,webmanifest}"],
+        clientsClaim: true,
       },
     }),
   ],

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { Box, Package, ScrollText } from "lucide-react"
+import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
 import { cn } from "./ui"
 
 const menu = [
@@ -17,6 +18,9 @@ function tautanClass(active: boolean) {
 }
 
 export function AppShell() {
+  const pembaruan = usePembaruanAplikasi()
+  const perbarui = pembaruan.tampilkanTombol ? pembaruan.perbarui : undefined
+
   return (
     <div className="min-h-dvh bg-ink-950 text-mist-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(900px_420px_at_0%_-10%,rgba(227,155,43,0.16),transparent_55%),radial-gradient(700px_380px_at_100%_0%,rgba(46,174,147,0.1),transparent_50%)]" />
@@ -33,7 +37,7 @@ export function AppShell() {
           </nav>
           <footer className="space-y-2 px-1">
             <p className="text-xs leading-relaxed text-mist-500">Stok tas, botol minum, dan kotak makan, dicatat per dus.</p>
-            <VersiAplikasi />
+            <VersiAplikasi onPerbarui={perbarui} />
           </footer>
         </aside>
         <div className="min-w-0">
@@ -43,7 +47,10 @@ export function AppShell() {
           </main>
         </div>
       </div>
-      <MobileNav />
+      <MobileNav onPerbarui={perbarui} />
+      {pembaruan.dialogTerbuka && (
+        <DialogPembaruan memuat={pembaruan.memuat} onNanti={pembaruan.nanti} onPerbarui={pembaruan.perbarui} />
+      )}
     </div>
   )
 }
@@ -53,25 +60,38 @@ function Merek() {
     <div className="flex items-center gap-3 px-1">
       <img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
       <span>
-        <span className="block text-sm font-semibold">Gudang</span>
+        <span className="block text-sm font-semibold">Ndod Warehouse</span>
         <span className="block text-xs text-mist-500">Tas, botol & kotak</span>
       </span>
     </div>
   )
 }
 
-function VersiAplikasi({ className }: { className?: string }) {
-  return <p className={cn("text-[11px] tabular-nums text-mist-500", className)}>Versi {__APP_VERSION__}</p>
+function VersiAplikasi({ className, onPerbarui }: { className?: string; onPerbarui?: () => void }) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
+      <p className="text-[11px] tabular-nums text-mist-500">Versi {__APP_VERSION__}</p>
+      {onPerbarui && (
+        <button
+          type="button"
+          onClick={onPerbarui}
+          className="perbarui-glow rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-semibold leading-none text-ink-950"
+        >
+          Perbarui sekarang
+        </button>
+      )}
+    </div>
+  )
 }
 
-function MobileNav() {
+function MobileNav({ onPerbarui }: { onPerbarui?: () => void }) {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink-950/90 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigasi utama"
     >
-      <VersiAplikasi className="pt-1.5 text-center" />
+      <VersiAplikasi onPerbarui={onPerbarui} className="justify-center pt-1.5" />
       <div className="mx-auto grid max-w-lg grid-cols-3 px-2">
         {menu.map((item) => (
           <ItemNav key={item.to} {...item} />

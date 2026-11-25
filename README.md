@@ -1,4 +1,4 @@
-# Gudang Ndod
+# Ndod Warehouse
 
 PWA untuk cek stok tas, botol minum, dan kotak makan, serta melihat dus mana yang menyimpannya. Bahasa antarmuka Indonesia, tampilan gelap, tanpa login, dan tanpa hierarki toko.
 
