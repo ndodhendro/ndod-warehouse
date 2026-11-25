@@ -180,7 +180,6 @@ export function DusDetail() {
       {tambah && (
         <TambahKeDus
           dusId={id}
-          sudahAda={new Map(baris.map((row) => [row.barang_id, row.jumlah]))}
           katalog={barang.data ?? []}
           memuat={barang.isLoading}
           onClose={() => setTambah(false)}
@@ -209,14 +208,12 @@ function Chip({ aktif, onClick, children }: { aktif: boolean; onClick: () => voi
 
 function TambahKeDus({
   dusId,
-  sudahAda,
   katalog,
   memuat,
   onClose,
   onSelesai,
 }: {
   dusId: string
-  sudahAda: Map<string, number>
   katalog: Barang[]
   memuat: boolean
   onClose: () => void
@@ -227,7 +224,6 @@ function TambahKeDus({
   const [catatan, setCatatan] = useState("")
   const [galat, setGalat] = useState<string | null>(null)
   const barang = katalog.find((item) => item.id === dipilih)
-  const ada = dipilih ? sudahAda.get(dipilih) : undefined
 
   const simpan = useMutation({
     mutationFn: () => tambahIsi(dusId, dipilih!, jumlah, catatan),
