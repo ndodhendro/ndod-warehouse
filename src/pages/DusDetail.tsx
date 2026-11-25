@@ -84,7 +84,7 @@ export function DusDetail() {
       <PageHeader
         kicker={data.kode}
         title={data.nama || data.kode}
-        subtitle={`${formatAngka(data.total_pcs)} pcs · ${formatAngka(data.jumlah_jenis)} model`}
+        subtitle={`${formatAngka(data.total_pcs)} pcs · ${formatAngka(data.jumlah_jenis)} model & warna`}
         back="/dus"
         action={
           <Link to={`/dus/${data.id}/edit`} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label="Ubah dus">

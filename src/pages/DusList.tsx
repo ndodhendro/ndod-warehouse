@@ -71,7 +71,7 @@ export function DusList() {
                     </span>
                   </span>
                   <span className="text-right">
-                    <Badge tone={item.jumlah_jenis > 0 ? "ok" : "neutral"}>{formatAngka(item.jumlah_jenis)} model</Badge>
+                    <Badge tone={item.jumlah_jenis > 0 ? "ok" : "neutral"}>{formatAngka(item.jumlah_jenis)} model & warna</Badge>
                     <span className="mt-1 block text-xs text-mist-500">{formatAngka(item.total_pcs)} pcs</span>
                   </span>
                   <ChevronRight size={18} className="text-mist-500" />
