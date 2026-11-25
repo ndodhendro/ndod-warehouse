@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { Handbag, X } from "lucide-react"
 
@@ -62,9 +62,8 @@ function FotoKosong({ lebar }: { lebar: boolean }) {
 }
 
 function PenampilFoto({ src, nama, onClose }: { src: string; nama: string; onClose: () => void }) {
-  const bingkai = useRef<HTMLDivElement>(null)
   const [gagal, setGagal] = useState(false)
-  const [ukuran, setUkuran] = useState<{ lebar: number; tinggi: number } | null>(null)
+  const [siap, setSiap] = useState(false)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -73,21 +72,17 @@ function PenampilFoto({ src, nama, onClose }: { src: string; nama: string; onClo
       event.stopPropagation()
       onClose()
     }
+    const sebelumnya = document.body.style.overflow
+    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", onKey, true)
-    return () => window.removeEventListener("keydown", onKey, true)
+    return () => {
+      document.body.style.overflow = sebelumnya
+      window.removeEventListener("keydown", onKey, true)
+    }
   }, [onClose])
 
-  useEffect(() => {
-    const el = bingkai.current
-    if (!el || !ukuran) return
-    el.scrollTo({
-      left: Math.max(0, (el.scrollWidth - el.clientWidth) / 2),
-      top: Math.max(0, (el.scrollHeight - el.clientHeight) / 2),
-    })
-  }, [ukuran])
-
   return createPortal(
-    <div ref={bingkai} className="fixed inset-0 z-[60] overflow-auto bg-black" role="dialog" aria-modal="true" aria-label={`Foto ${nama}`} onClick={onClose}>
+    <div className="fixed inset-0 z-[60] overflow-hidden bg-black" role="dialog" aria-modal="true" aria-label={`Foto ${nama}`} onClick={onClose}>
       <div className="pointer-events-none fixed inset-x-0 top-0 z-[61] flex items-start justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <p className="pointer-events-auto max-w-[70%] truncate pt-2 text-sm font-medium text-white/80">{nama}</p>
         <button
@@ -99,26 +94,24 @@ function PenampilFoto({ src, nama, onClose }: { src: string; nama: string; onClo
           <X size={18} />
         </button>
       </div>
-      <div className="flex min-h-dvh w-max min-w-full items-center justify-center p-4 pt-16">
+      <div className="flex h-dvh w-full items-center justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-16">
         {gagal ? (
           <p className="text-sm text-white/80">Foto tidak bisa dimuat.</p>
         ) : (
           <>
-            {!ukuran && <p className="text-sm text-white/70">Memuat foto...</p>}
+            {!siap && <p className="text-sm text-white/70">Memuat foto...</p>}
             <img
               src={src}
               alt={nama}
               draggable={false}
               decoding="async"
-              className={ukuran ? "max-w-none" : "pointer-events-none absolute h-px w-px opacity-0"}
-              style={ukuran ? { width: ukuran.lebar, height: ukuran.tinggi } : undefined}
+              className={
+                siap
+                  ? "block h-auto w-auto max-h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-w-[calc(100vw-2rem)] shrink-0 object-contain"
+                  : "pointer-events-none absolute h-px w-px opacity-0"
+              }
               onClick={(event) => event.stopPropagation()}
-              onLoad={(event) => {
-                const img = event.currentTarget
-                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                  setUkuran({ lebar: img.naturalWidth, tinggi: img.naturalHeight })
-                }
-              }}
+              onLoad={() => setSiap(true)}
               onError={() => setGagal(true)}
             />
           </>
