@@ -10,6 +10,9 @@ import { pesanError } from "../lib/errors"
 import { formatAngka, labelBarang, labelJenis } from "../lib/format"
 import { useBarangList, useDus, useIsiDus } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
+import type { JenisBarang } from "../types"
+
+type Saring = "semua" | JenisBarang
 
 export function DusDetail() {
   const { id = "" } = useParams()
@@ -21,8 +24,18 @@ export function DusDetail() {
   const qc = useQueryClient()
   const [draft, setDraft] = useState<Record<string, number> | null>(null)
   const [tambah, setTambah] = useState(false)
+  const [cari, setCari] = useState("")
+  const [saring, setSaring] = useState<Saring>("semua")
 
   const baris = isi.data ?? []
+  const kata = cari.trim().toLowerCase()
+  const tampilan = useMemo(() => {
+    return baris.filter((row) => {
+      if (saring !== "semua" && row.barang.jenis !== saring) return false
+      if (!kata) return true
+      return [row.barang.kode, row.barang.model, row.barang.warna, labelJenis(row.barang.jenis)].some((nilai) => nilai.toLowerCase().includes(kata))
+    })
+  }, [baris, kata, saring])
   const kotor = useMemo(() => {
     if (!draft || !isi.data) return false
     return isi.data.some((row) => draft[row.barang_id] !== row.jumlah)
@@ -95,33 +108,46 @@ export function DusDetail() {
       {baris.length === 0 ? (
         <EmptyState title="Dus ini kosong" body="Masukkan tas, botol minum, atau kotak makan yang disimpan di dus ini." action={<Button onClick={() => setTambah(true)}>Tambah barang</Button>} />
       ) : (
-        <Card className="divide-y divide-white/5">
-          {baris.map((row) => {
-            const jumlah = draft?.[row.barang_id] ?? row.jumlah
-            return (
-              <div key={row.id} className="flex items-center gap-3 px-4 py-3">
-                <Link to={`/barang/${row.barang_id}`} className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <Badge tone={row.barang.jenis}>{labelJenis(row.barang.jenis)}</Badge>
-                    <span className="truncate text-xs text-mist-500">{row.barang.kode}</span>
-                  </span>
-                  <span className="mt-1 block truncate font-semibold">{row.barang.model}</span>
-                  <LabelWarna nama={row.barang.warna} className="block text-sm text-mist-500" />
-                  {jumlah === 0 && <span className="mt-1 block text-xs text-clay-400">Akan dikeluarkan saat disimpan</span>}
-                </Link>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Kurangi ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.max(0, jumlah - 1) }))}>
-                    <Minus size={16} />
-                  </button>
-                  <span className="w-10 text-center font-semibold tabular-nums">{formatAngka(jumlah)}</span>
-                  <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Tambah ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.min(1000000, jumlah + 1) }))}>
-                    <Plus size={16} />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </Card>
+        <>
+          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
+            <Chip aktif={saring === "tas"} onClick={() => setSaring("tas")}>Tas</Chip>
+            <Chip aktif={saring === "botol"} onClick={() => setSaring("botol")}>Botol minum</Chip>
+            <Chip aktif={saring === "kotak"} onClick={() => setSaring("kotak")}>Kotak makan</Chip>
+          </div>
+          {tampilan.length === 0 ? (
+            <p className="mt-6 text-sm text-mist-500">Tidak ada barang yang cocok.</p>
+          ) : (
+            <Card className="mt-4 divide-y divide-white/5">
+              {tampilan.map((row) => {
+                const jumlah = draft?.[row.barang_id] ?? row.jumlah
+                return (
+                  <div key={row.id} className="flex items-center gap-3 px-4 py-3">
+                    <Link to={`/barang/${row.barang_id}`} className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <Badge tone={row.barang.jenis}>{labelJenis(row.barang.jenis)}</Badge>
+                        <span className="truncate text-xs text-mist-500">{row.barang.kode}</span>
+                      </span>
+                      <span className="mt-1 block truncate font-semibold">{row.barang.model}</span>
+                      <LabelWarna nama={row.barang.warna} className="block text-sm text-mist-500" />
+                      {jumlah === 0 && <span className="mt-1 block text-xs text-clay-400">Akan dikeluarkan saat disimpan</span>}
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Kurangi ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.max(0, jumlah - 1) }))}>
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-10 text-center font-semibold tabular-nums">{formatAngka(jumlah)}</span>
+                      <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Tambah ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.min(1000000, jumlah + 1) }))}>
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </Card>
+          )}
+        </>
       )}
 
       {kotor && (
@@ -164,6 +190,18 @@ export function DusDetail() {
         />
       )}
     </div>
+  )
+}
+
+function Chip({ aktif, onClick, children }: { aktif: boolean; onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={aktif ? "rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-ink-950" : "rounded-full bg-white/5 px-3 py-1.5 text-sm text-mist-300"}
+    >
+      {children}
+    </button>
   )
 }
 
