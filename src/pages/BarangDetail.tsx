@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom"
-import { ChevronRight, Pencil } from "lucide-react"
+import { ChevronRight, MapPin, Pencil } from "lucide-react"
+import { FotoBarang } from "../components/FotoBarang"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader } from "../components/ui"
@@ -30,9 +31,8 @@ export function BarangDetail() {
   return (
     <div>
       <PageHeader
-        kicker={data.kode}
         title={data.model}
-        subtitle={<>{labelJenis(data.jenis)} · <LabelWarna nama={data.warna} /></>}
+        subtitle={<><Badge tone={data.jenis}>{labelJenis(data.jenis)}</Badge> · <LabelWarna nama={data.warna} /></>}
         back="/barang"
         action={
           <Link to={`/barang/${data.id}/edit`} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label="Ubah barang">
@@ -40,6 +40,7 @@ export function BarangDetail() {
           </Link>
         }
       />
+      <FotoBarang kecil={data.foto_kecil_url} penuh={data.foto_url} nama={data.model} lebar />
       <div className="mb-4 grid grid-cols-2 gap-2">
         <Card className="px-4 py-3">
           <p className="text-xs text-mist-500">Total stok</p>
@@ -51,10 +52,7 @@ export function BarangDetail() {
         </Card>
       </div>
       {data.catatan && <p className="mb-4 text-sm text-mist-300">{data.catatan}</p>}
-      <div className="mb-3 flex items-center gap-2">
-        <Badge tone={data.jenis}>{labelJenis(data.jenis)}</Badge>
-        <h2 className="font-semibold">Lokasi stok</h2>
-      </div>
+      <h2 className="mb-3 font-semibold">Lokasi stok</h2>
       {lokasi.length === 0 ? (
         <EmptyState
           title="Belum masuk dus"
@@ -66,10 +64,10 @@ export function BarangDetail() {
           {lokasi.map((item) => (
             <div key={item.id} className="flex items-center gap-3 px-4 py-3">
               <Link to={`/dus/${item.dus.id}`} className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{item.dus.nama || item.dus.kode}</span>
-                <span className="block text-sm text-mist-500">
-                  {item.dus.kode}
-                  {item.dus.lokasi ? ` · ${item.dus.lokasi}` : ""}
+                <span className="block truncate font-semibold">{item.dus.kode}</span>
+                <span className="mt-1 flex items-center gap-1 text-sm text-mist-500">
+                  <MapPin size={14} className="shrink-0 text-amber-300" />
+                  <span className="truncate">{item.dus.lokasi || "Lokasi belum diisi"}</span>
                 </span>
               </Link>
               <span className="font-semibold tabular-nums">{formatAngka(item.jumlah)} pcs</span>

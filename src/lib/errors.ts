@@ -23,6 +23,9 @@ export function pesanError(err: unknown) {
   if (/does not exist|schema cache|Could not find the function/i.test(gabungan)) {
     return "Database belum siap. Jalankan skrip SQL di Supabase, lalu muat ulang."
   }
+  if (/bucket not found/i.test(gabungan)) return "Bucket foto ndod-warehouse belum ada. Jalankan skrip SQL foto barang."
+  if (/mime type/i.test(gabungan)) return "Format foto tidak didukung."
+  if (/payload too large|maximum allowed size|object exceeded/i.test(gabungan)) return "Foto terlalu besar."
   if (/permission denied|row-level security/i.test(gabungan)) {
     return "Akses database ditolak. Periksa kebijakan RLS."
   }

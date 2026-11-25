@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { PilihanTeks } from "../components/PilihanTeks"
 import { Button, ErrorBox, Field, FormActions, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
 import { hapusDus, simpanDus } from "../lib/api"
 import { pesanError } from "../lib/errors"
-import { useDus } from "../lib/queries"
+import { useDus, useDusList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
 import type { DusInput } from "../types"
 
-const kosong: DusInput = { kode: "", nama: "", lokasi: "", catatan: "" }
+const kosong: DusInput = { kode: "", lokasi: "", catatan: "" }
 
 export function DusForm() {
   const { id } = useParams()
@@ -18,17 +19,22 @@ export function DusForm() {
   const confirm = useConfirm()
   const qc = useQueryClient()
   const query = useDus(id)
+  const daftar = useDusList()
   const [form, setForm] = useState<DusInput>({ ...kosong, kode: params.get("kode")?.toUpperCase() ?? "" })
 
   useEffect(() => {
     if (!query.data) return
     setForm({
       kode: query.data.kode,
-      nama: query.data.nama ?? "",
       lokasi: query.data.lokasi ?? "",
       catatan: query.data.catatan ?? "",
     })
   }, [query.data])
+
+  const lokasiSaran = useMemo(
+    () => (daftar.data ?? []).flatMap((item) => (item.lokasi ? [item.lokasi] : [])),
+    [daftar.data],
+  )
 
   const simpan = useMutation({
     mutationFn: () => simpanDus(id ?? null, form),
@@ -67,7 +73,7 @@ export function DusForm() {
       <PageHeader
         kicker={id ? query.data?.kode : "Baru"}
         title={id ? "Ubah dus" : "Tambah dus"}
-        subtitle="Kode menempel pada dus fisik. Lokasi menjelaskan dus itu disimpan di mana."
+        subtitle=""
         back={id ? `/dus/${id}` : "/dus"}
       />
       {!supabaseConfigured() && (
@@ -82,15 +88,18 @@ export function DusForm() {
           simpan.mutate()
         }}
       >
-        <Field label="Kode dus" hint="Disimpan dalam huruf besar. Contoh: DUS-01.">
+        <Field label="Kode dus" hint="">
           <input className="field" value={form.kode} maxLength={40} autoCapitalize="characters" autoCorrect="off" spellCheck={false} required onChange={(event) => setForm({ ...form, kode: event.target.value })} />
         </Field>
-        <Field label="Nama" hint="Opsional. Nama panggilan supaya mudah dikenali.">
-          <input className="field" value={form.nama} maxLength={80} onChange={(event) => setForm({ ...form, nama: event.target.value })} />
-        </Field>
-        <Field label="Lokasi" hint="Rak, ruangan, atau tempat dus diletakkan.">
-          <input className="field" value={form.lokasi} maxLength={120} onChange={(event) => setForm({ ...form, lokasi: event.target.value })} />
-        </Field>
+        <PilihanTeks
+          label="Lokasi"
+          hint="Rak, ruangan, atau tempat dus diletakkan."
+          value={form.lokasi}
+          onChange={(lokasi) => setForm({ ...form, lokasi })}
+          pilihan={lokasiSaran}
+          maxLength={120}
+          placeholder="Cari atau ketik lokasi"
+        />
         <Field label="Catatan">
           <textarea className="field min-h-24" placeholder="Opsional" value={form.catatan} maxLength={500} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
         </Field>

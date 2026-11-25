@@ -1,13 +1,14 @@
 import { useState } from "react"
+import { ScrollText } from "lucide-react"
 import { Link } from "react-router-dom"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { Card, EmptyState, ErrorBox, kelasAreaMuat, Loading, PageHeader } from "../components/ui"
+import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, Loading, PageHeader } from "../components/ui"
 import { formatAngka, formatWaktu, labelJenis } from "../lib/format"
 import { warnaTeks } from "../lib/warna"
 import { useRiwayat } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
-import type { JenisRiwayat, RiwayatItem } from "../types"
+import type { JenisBarang, JenisRiwayat, RiwayatItem } from "../types"
 
 const label: Record<JenisRiwayat, string> = {
   masuk: "Masuk",
@@ -47,7 +48,7 @@ export function RiwayatPage() {
 
   return (
     <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
-      <PageHeader title="Riwayat" subtitle="Jejak barang masuk, keluar, koreksi, dan pindah dus." />
+      <PageHeader icon={ScrollText} title="Riwayat" subtitle="" />
       {!siap ? (
         <SetupCard />
       ) : query.isLoading ? (
@@ -114,30 +115,58 @@ export function KartuRiwayat({ item }: { item: RiwayatItem }) {
       {(item.asal || item.tujuan || item.barang) && (
         <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-amber-300">
           {item.barang && <Link to={`/barang/${item.barang.id}`}>Lihat barang</Link>}
-          {item.asal && <Link to={`/dus/${item.asal.id}`}>Dus {item.asal.kode}</Link>}
-          {item.tujuan && item.tujuan.id !== item.asal?.id && <Link to={`/dus/${item.tujuan.id}`}>Dus {item.tujuan.kode}</Link>}
+          {item.asal && (
+            <Link to={`/dus/${item.asal.id}`}>{item.tujuan && item.tujuan.id !== item.asal.id ? "Lihat dus asal" : "Lihat dus"}</Link>
+          )}
+          {item.tujuan && item.tujuan.id !== item.asal?.id && (
+            <Link to={`/dus/${item.tujuan.id}`}>{item.asal ? "Lihat dus tujuan" : "Lihat dus"}</Link>
+          )}
         </div>
       )}
     </Card>
   )
 }
 
+const awalanJenis: Array<{ label: string; jenis: JenisBarang }> = [
+  { label: "Kotak makan", jenis: "kotak" },
+  { label: "Botol minum", jenis: "botol" },
+  { label: "Tas", jenis: "tas" },
+]
+
 function NamaRiwayat({ item }: { item: RiwayatItem }) {
   if (item.barang) {
     return (
       <>
-        {labelJenis(item.barang.jenis)} · {item.barang.model} · <LabelWarna nama={item.barang.warna} />
+        <Badge tone={item.barang.jenis}>{labelJenis(item.barang.jenis)}</Badge>
+        {" · "}
+        {item.barang.model}
+        {" · "}
+        <LabelWarna nama={item.barang.warna} />
       </>
     )
   }
   const teks = item.barang_label || item.barang_kode || "Barang"
-  const potong = teks.lastIndexOf(" · ")
-  const nama = potong === -1 ? "" : teks.slice(potong + 3)
-  if (!nama || !warnaTeks(nama)) return teks
+  const cocok = awalanJenis.find((awal) => teks.startsWith(`${awal.label} · `))
+  const sisa = cocok ? teks.slice(cocok.label.length + 3) : teks
+  const potong = sisa.lastIndexOf(" · ")
+  const nama = potong === -1 ? "" : sisa.slice(potong + 3)
+  const punyaWarna = Boolean(nama && warnaTeks(nama))
   return (
     <>
-      {teks.slice(0, potong + 3)}
-      <LabelWarna nama={nama} />
+      {cocok && (
+        <>
+          <Badge tone={cocok.jenis}>{labelJenis(cocok.jenis)}</Badge>
+          {" · "}
+        </>
+      )}
+      {punyaWarna ? (
+        <>
+          {sisa.slice(0, potong + 3)}
+          <LabelWarna nama={nama} />
+        </>
+      ) : (
+        sisa
+      )}
     </>
   )
 }

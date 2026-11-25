@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
-import { ChevronRight, MapPin, Plus } from "lucide-react"
+import { Box, ChevronRight, MapPin, Plus } from "lucide-react"
 import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
-import { formatAngka } from "../lib/format"
+import { bandingDus, cocokKata, formatAngka } from "../lib/format"
 import { useDusList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
 
@@ -15,22 +15,23 @@ export function DusList() {
   const query = useDusList()
   const [cari, setCari] = useState("")
   const [saring, setSaring] = useState<Saring>("semua")
-  const kata = cari.trim().toLowerCase()
 
   const daftar = useMemo(() => {
-    return (query.data ?? []).filter((item) => {
-      if (saring === "berisi" && item.total_pcs === 0) return false
-      if (saring === "kosong" && item.total_pcs > 0) return false
-      if (!kata) return true
-      return [item.kode, item.nama, item.lokasi, item.catatan].some((nilai) => nilai?.toLowerCase().includes(kata))
-    })
-  }, [query.data, kata, saring])
+    return (query.data ?? [])
+      .filter((item) => {
+        if (saring === "berisi" && item.total_pcs === 0) return false
+        if (saring === "kosong" && item.total_pcs > 0) return false
+        return cocokKata(cari, [item.kode, item.lokasi, item.catatan])
+      })
+      .sort((a, b) => bandingDus(a, b))
+  }, [query.data, cari, saring])
 
   return (
     <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
       <PageHeader
+        icon={Box}
         title="Dus"
-        subtitle="Kotak penyimpanan beserta lokasinya."
+        subtitle=""
         action={<LinkButton to="/dus/baru" className="px-3"><Plus size={18} /> Dus</LinkButton>}
       />
       {!siap ? (
@@ -44,7 +45,7 @@ export function DusList() {
       ) : (
         <>
           <RingkasanStok />
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, nama, atau lokasi dus" />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari kode atau lokasi dus" />
           <div className="mt-3 flex gap-2">
             <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
             <Chip aktif={saring === "berisi"} onClick={() => setSaring("berisi")}>Berisi</Chip>
@@ -61,12 +62,9 @@ export function DusList() {
               {daftar.map((item) => (
                 <Link key={item.id} to={`/dus/${item.id}`} className="flex items-center gap-3 px-4 py-3">
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate font-semibold">{item.nama || item.kode}</span>
-                      {item.nama && <span className="text-xs text-mist-500">{item.kode}</span>}
-                    </span>
+                    <span className="block truncate font-semibold">{item.kode}</span>
                     <span className="mt-1 flex items-center gap-1 text-sm text-mist-500">
-                      <MapPin size={14} />
+                      <MapPin size={14} className="shrink-0 text-amber-300" />
                       <span className="truncate">{item.lokasi || "Lokasi belum diisi"}</span>
                     </span>
                   </span>

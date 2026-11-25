@@ -8,6 +8,13 @@ export function normTeks(value: string) {
   return value.trim().replace(/\s+/g, " ")
 }
 
+export function cocokKata(cari: string, bidang: Array<string | null | undefined>) {
+  const bagian = cari.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (bagian.length === 0) return true
+  const teks = bidang.filter((nilai): nilai is string => Boolean(nilai)).join(" ").toLowerCase()
+  return bagian.every((kata) => teks.includes(kata))
+}
+
 export function kosongJadiNull(value: string) {
   const teks = normTeks(value)
   return teks.length ? teks : null
@@ -40,6 +47,16 @@ export function labelBarang(barang: { jenis: JenisBarang; model: string; warna: 
 
 export function bandingKode(a: string, b: string) {
   return a.localeCompare(b, "id", { numeric: true, sensitivity: "base" })
+}
+
+export function dusSample(dus: { kode: string }) {
+  return dus.kode.trim().toUpperCase() === "S0"
+}
+
+export function bandingDus(a: { kode: string }, b: { kode: string }) {
+  const prioritas = Number(dusSample(b)) - Number(dusSample(a))
+  if (prioritas !== 0) return prioritas
+  return bandingKode(a.kode, b.kode)
 }
 
 export function unduhCsv(nama: string, baris: string[][]) {

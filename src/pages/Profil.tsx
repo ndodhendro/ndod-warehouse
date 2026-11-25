@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { LogOut } from "lucide-react"
+import { LogOut, UserRound } from "lucide-react"
 import { Button, Card, PageHeader, useConfirm } from "../components/ui"
 import { useSesi } from "../lib/sesi"
 
@@ -34,7 +34,7 @@ export function HalamanProfil() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Profil" subtitle="Akun yang sedang masuk di perangkat ini." />
+      <PageHeader icon={UserRound} title="Profil" subtitle="" />
       <Card className="max-w-lg p-5">
         <div className="flex items-center gap-4">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-amber-500/15 text-lg font-semibold text-amber-300">

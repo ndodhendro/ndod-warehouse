@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { MapPin, Minus, Pencil, Plus } from "lucide-react"
+import { ChevronDown, MapPin, Pencil, Plus, X } from "lucide-react"
+import { FotoBarang } from "../components/FotoBarang"
 import { LabelWarna } from "../components/LabelWarna"
+import { PengaturJumlah } from "../components/PengaturJumlah"
 import { SetupCard } from "../components/SetupCard"
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, FormActions, LinkButton, Loading, PageHeader, SearchField, Sheet, useConfirm, useToast } from "../components/ui"
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, FormActions, LinkButton, Loading, PageHeader, SearchField, Sheet, cn, useConfirm, useToast } from "../components/ui"
 import { setJumlahIsi, tambahIsi } from "../lib/api"
 import { pesanError } from "../lib/errors"
-import { formatAngka, labelBarang, labelJenis } from "../lib/format"
+import { cocokKata, formatAngka, labelBarang, labelJenis } from "../lib/format"
 import { useBarangList, useDus, useIsiDus } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
-import type { JenisBarang } from "../types"
+import type { Barang, JenisBarang } from "../types"
 
 type Saring = "semua" | JenisBarang
 
@@ -28,14 +30,12 @@ export function DusDetail() {
   const [saring, setSaring] = useState<Saring>("semua")
 
   const baris = isi.data ?? []
-  const kata = cari.trim().toLowerCase()
   const tampilan = useMemo(() => {
     return baris.filter((row) => {
       if (saring !== "semua" && row.barang.jenis !== saring) return false
-      if (!kata) return true
-      return [row.barang.kode, row.barang.model, row.barang.warna, labelJenis(row.barang.jenis)].some((nilai) => nilai.toLowerCase().includes(kata))
+      return cocokKata(cari, [row.barang.kode, row.barang.model, row.barang.warna, labelJenis(row.barang.jenis)])
     })
-  }, [baris, kata, saring])
+  }, [baris, cari, saring])
   const kotor = useMemo(() => {
     if (!draft || !isi.data) return false
     return isi.data.some((row) => draft[row.barang_id] !== row.jumlah)
@@ -82,9 +82,18 @@ export function DusDetail() {
   return (
     <div>
       <PageHeader
-        kicker={data.kode}
-        title={data.nama || data.kode}
-        subtitle={`${formatAngka(data.total_pcs)} pcs · ${formatAngka(data.jumlah_jenis)} model & warna`}
+        title={data.kode}
+        subtitle={
+          <>
+            <span className="flex min-w-0 items-center gap-1">
+              <MapPin size={14} className="shrink-0 text-amber-300" />
+              <span className="min-w-0 truncate">{data.lokasi || "Lokasi belum diisi"}</span>
+            </span>
+            <span className="mt-1 block">
+              {formatAngka(data.total_pcs)} pcs · {formatAngka(data.jumlah_jenis)} model & warna
+            </span>
+          </>
+        }
         back="/dus"
         action={
           <Link to={`/dus/${data.id}/edit`} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label="Ubah dus">
@@ -92,13 +101,7 @@ export function DusDetail() {
           </Link>
         }
       />
-      <Card className="mb-4 px-4 py-3 text-sm text-mist-300">
-        <p className="flex items-center gap-2">
-          <MapPin size={16} className="text-amber-300" />
-          {data.lokasi || "Lokasi belum diisi"}
-        </p>
-        {data.catatan && <p className="mt-2 text-mist-500">{data.catatan}</p>}
-      </Card>
+      {data.catatan && <p className="mb-4 text-sm text-mist-300">{data.catatan}</p>}
 
       <div className="mb-4 flex gap-2">
         <Button variant="ghost" className="flex-1 !text-amber-300" onClick={() => setTambah(true)}><Plus size={18} /> Barang</Button>
@@ -109,7 +112,7 @@ export function DusDetail() {
         <EmptyState title="Dus ini kosong" body="Masukkan tas, botol minum, atau kotak makan yang disimpan di dus ini." action={<Button onClick={() => setTambah(true)}>Tambah barang</Button>} />
       ) : (
         <>
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari jenis, model, atau warna barang" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
             <Chip aktif={saring === "tas"} onClick={() => setSaring("tas")}>Tas</Chip>
@@ -124,24 +127,20 @@ export function DusDetail() {
                 const jumlah = draft?.[row.barang_id] ?? row.jumlah
                 return (
                   <div key={row.id} className="flex items-center gap-3 px-4 py-3">
+                    <FotoBarang kecil={row.barang.foto_kecil_url} penuh={row.barang.foto_url} nama={row.barang.model} />
                     <Link to={`/barang/${row.barang_id}`} className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <Badge tone={row.barang.jenis}>{labelJenis(row.barang.jenis)}</Badge>
-                        <span className="truncate text-xs text-mist-500">{row.barang.kode}</span>
-                      </span>
+                      <Badge tone={row.barang.jenis}>{labelJenis(row.barang.jenis)}</Badge>
                       <span className="mt-1 block truncate font-semibold">{row.barang.model}</span>
                       <LabelWarna nama={row.barang.warna} className="block text-sm text-mist-500" />
                       {jumlah === 0 && <span className="mt-1 block text-xs text-clay-400">Akan dikeluarkan saat disimpan</span>}
                     </Link>
-                    <div className="flex items-center gap-1">
-                      <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Kurangi ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.max(0, jumlah - 1) }))}>
-                        <Minus size={16} />
-                      </button>
-                      <span className="w-10 text-center font-semibold tabular-nums">{formatAngka(jumlah)}</span>
-                      <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Tambah ${row.barang.model}`} onClick={() => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: Math.min(1000000, jumlah + 1) }))}>
-                        <Plus size={16} />
-                      </button>
-                    </div>
+                    <PengaturJumlah
+                      nilai={jumlah}
+                      min={0}
+                      max={1000000}
+                      label={row.barang.model}
+                      onUbah={(berikutnya) => setDraft((now) => ({ ...(now ?? {}), [row.barang_id]: berikutnya }))}
+                    />
                   </div>
                 )
               })}
@@ -151,28 +150,31 @@ export function DusDetail() {
       )}
 
       {kotor && (
-        <div className="sticky bottom-3 z-20 -mx-4 mt-4 bg-ink-950 px-4 py-3 md:bottom-4 md:mx-0 md:px-0">
-          <FormActions
-            cancelClassName="!bg-ink-800 hover:!bg-ink-700"
-            pending={simpan.isPending}
-            submitType="button"
-            onCancel={() => setDraft(Object.fromEntries(baris.map((row) => [row.barang_id, row.jumlah])))}
-            onSubmit={async () => {
-              const adaYangKeluar = baris.some((row) => (draft?.[row.barang_id] ?? row.jumlah) === 0 && row.jumlah !== 0)
-              if (adaYangKeluar) {
-                const ya = await confirm({
-                  title: "Keluarkan barang dari dus?",
-                  body: "Jumlah 0 berarti barang itu tidak lagi disimpan di dus ini.",
-                  confirmLabel: "Simpan",
-                  danger: true,
-                })
-                if (!ya) return
-              }
-              simpan.mutate()
-            }}
-            submitLabel="Simpan"
-          />
-        </div>
+        <>
+          <div className="h-14 md:hidden" aria-hidden />
+          <div className="z-40 bg-ink-950 px-4 pt-3 max-md:fixed max-md:inset-x-0 max-md:bottom-[calc(var(--tinggi-nav-bawah)-0.25rem)] md:sticky md:bottom-4 md:mx-0 md:mt-4 md:px-0 md:py-3">
+            <FormActions
+              cancelClassName="!bg-ink-800 hover:!bg-ink-700"
+              pending={simpan.isPending}
+              submitType="button"
+              onCancel={() => setDraft(Object.fromEntries(baris.map((row) => [row.barang_id, row.jumlah])))}
+              onSubmit={async () => {
+                const adaYangKeluar = baris.some((row) => (draft?.[row.barang_id] ?? row.jumlah) === 0 && row.jumlah !== 0)
+                if (adaYangKeluar) {
+                  const ya = await confirm({
+                    title: "Keluarkan barang dari dus?",
+                    body: "Jumlah 0 berarti barang itu tidak lagi disimpan di dus ini.",
+                    confirmLabel: "Simpan",
+                    danger: true,
+                  })
+                  if (!ya) return
+                }
+                simpan.mutate()
+              }}
+              submitLabel="Simpan"
+            />
+          </div>
+        </>
       )}
 
       {tambah && (
@@ -215,25 +217,20 @@ function TambahKeDus({
 }: {
   dusId: string
   sudahAda: Map<string, number>
-  katalog: Array<{ id: string; kode: string; jenis: "tas" | "botol" | "kotak"; model: string; warna: string }>
+  katalog: Barang[]
   memuat: boolean
   onClose: () => void
   onSelesai: (pesan: string) => Promise<void>
 }) {
-  const [cari, setCari] = useState("")
   const [dipilih, setDipilih] = useState<string | null>(null)
-  const [jumlah, setJumlah] = useState("1")
+  const [jumlah, setJumlah] = useState(1)
   const [catatan, setCatatan] = useState("")
   const [galat, setGalat] = useState<string | null>(null)
-  const kata = cari.trim().toLowerCase()
-  const daftar = katalog.filter((item) =>
-    !kata ? true : [item.kode, item.model, item.warna, labelJenis(item.jenis)].some((nilai) => nilai.toLowerCase().includes(kata)),
-  )
   const barang = katalog.find((item) => item.id === dipilih)
   const ada = dipilih ? sudahAda.get(dipilih) : undefined
 
   const simpan = useMutation({
-    mutationFn: () => tambahIsi(dusId, dipilih!, Number(jumlah), catatan),
+    mutationFn: () => tambahIsi(dusId, dipilih!, jumlah, catatan),
     onSuccess: () => onSelesai(barang ? `${labelBarang(barang)} ditambahkan.` : "Barang ditambahkan."),
     onError: (error) => setGalat(pesanError(error)),
   })
@@ -247,12 +244,11 @@ function TambahKeDus({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
-            const nilai = Number(jumlah)
             if (!dipilih) {
               setGalat("Pilih barang.")
               return
             }
-            if (!Number.isInteger(nilai) || nilai < 1) {
+            if (!Number.isInteger(jumlah) || jumlah < 1) {
               setGalat("Jumlah harus bilangan lebih dari 0.")
               return
             }
@@ -260,26 +256,22 @@ function TambahKeDus({
             simpan.mutate()
           }}
         >
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
-          <div className="max-h-56 space-y-1 overflow-auto">
-            {memuat && <Loading letak="baris" />}
-            {daftar.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setDipilih(item.id)}
-                className={dipilih === item.id ? "block w-full rounded-xl bg-amber-500/15 px-3 py-2 text-left" : "block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5"}
-              >
-                <span className="block font-medium">{item.model} · <LabelWarna nama={item.warna} /></span>
-                <span className="block text-xs text-mist-500">{labelJenis(item.jenis)} · {item.kode}</span>
-              </button>
-            ))}
+          <PilihBarang
+            katalog={katalog}
+            memuat={memuat}
+            dipilih={dipilih}
+            onPilih={(id) => {
+              if (id !== dipilih) setJumlah(1)
+              setDipilih(id)
+              setGalat(null)
+            }}
+          />
+          {barang && <FotoBarang kecil={barang.foto_kecil_url} penuh={barang.foto_url} nama={`${barang.model} · ${barang.warna}`} lebar />}
+          <div>
+            <span className="mb-1.5 block text-sm text-mist-300">Jumlah yang ditambahkan</span>
+            <PengaturJumlah nilai={jumlah} min={1} max={1000000} label="jumlah" onUbah={setJumlah} />
           </div>
-          {ada !== undefined && <p className="text-sm text-mist-300">Sudah ada {formatAngka(ada)} pcs di dus ini. Jumlah di bawah akan ditambahkan.</p>}
-          <Field label="Jumlah yang ditambahkan">
-            <input className="field" inputMode="numeric" value={jumlah} onChange={(event) => setJumlah(event.target.value)} />
-          </Field>
-          <Field label="Catatan" hint="Opsional. Muncul di riwayat.">
+          <Field label="Catatan" hint="">
             <input className="field" placeholder="Opsional" value={catatan} maxLength={200} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
           {galat && <p className="text-sm text-clay-400">{galat}</p>}
@@ -287,5 +279,184 @@ function TambahKeDus({
         </form>
       )}
     </Sheet>
+  )
+}
+
+function PilihBarang({
+  katalog,
+  memuat,
+  dipilih,
+  onPilih,
+}: {
+  katalog: Barang[]
+  memuat: boolean
+  dipilih: string | null
+  onPilih: (id: string | null) => void
+}) {
+  const daftarId = useId()
+  const kotak = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  const [buka, setBuka] = useState(false)
+  const [cari, setCari] = useState("")
+  const [sorot, setSorot] = useState(0)
+  const barang = katalog.find((item) => item.id === dipilih)
+  const daftar = useMemo(() => {
+    return katalog.filter((item) => cocokKata(cari, [item.kode, item.model, item.warna, labelJenis(item.jenis)]))
+  }, [katalog, cari])
+  const indeks = daftar.length === 0 ? 0 : Math.min(sorot, daftar.length - 1)
+  const adaBersih = buka ? cari.length > 0 : Boolean(dipilih)
+
+  useEffect(() => {
+    if (!buka) return
+    const el = panel.current?.querySelector<HTMLElement>(`[data-indeks="${indeks}"]`)
+    const batas = panel.current
+    if (!el || !batas) return
+    const kotakDaftar = batas.getBoundingClientRect()
+    const item = el.getBoundingClientRect()
+    if (item.top < kotakDaftar.top) batas.scrollTop -= kotakDaftar.top - item.top
+    else if (item.bottom > kotakDaftar.bottom) batas.scrollTop += item.bottom - kotakDaftar.bottom
+  }, [buka, indeks, daftar.length])
+
+  useEffect(() => {
+    if (!buka) return
+    function diLuar(event: MouseEvent) {
+      if (!kotak.current?.contains(event.target as Node)) {
+        setBuka(false)
+        setCari("")
+      }
+    }
+    document.addEventListener("click", diLuar, true)
+    return () => document.removeEventListener("click", diLuar, true)
+  }, [buka])
+
+  function tutup() {
+    setBuka(false)
+    setCari("")
+  }
+
+  function pilih(id: string) {
+    onPilih(id)
+    tutup()
+  }
+
+  function bukaDaftar() {
+    const index = katalog.findIndex((item) => item.id === dipilih)
+    setSorot(index >= 0 ? index : 0)
+    setBuka(true)
+    input.current?.focus()
+  }
+
+  return (
+    <div ref={kotak}>
+      <span id={`${daftarId}-label`} className="mb-1.5 block text-sm text-mist-300">Barang</span>
+      <div className="relative">
+        <input
+          ref={input}
+          className={cn("field", adaBersih ? "pr-20" : "pr-11")}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={buka}
+          aria-controls={daftarId}
+          aria-labelledby={`${daftarId}-label`}
+          aria-activedescendant={buka && daftar[indeks] ? `${daftarId}-${daftar[indeks].id}` : undefined}
+          placeholder="Cari jenis, model, atau warna barang"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          value={buka ? cari : barang ? labelBarang(barang) : ""}
+          onFocus={() => {
+            if (!buka) bukaDaftar()
+          }}
+          onClick={() => {
+            if (!buka) bukaDaftar()
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              if (!kotak.current?.contains(document.activeElement)) tutup()
+            }, 150)
+          }}
+          onChange={(event) => {
+            setCari(event.target.value)
+            setSorot(0)
+            setBuka(true)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault()
+              if (!buka) bukaDaftar()
+              else setSorot(indeks + 1)
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault()
+              if (buka) setSorot(Math.max(0, indeks - 1))
+            } else if (event.key === "Enter" && buka) {
+              event.preventDefault()
+              const item = daftar[indeks]
+              if (item) pilih(item.id)
+            } else if (event.key === "Escape" && buka) {
+              event.preventDefault()
+              tutup()
+            }
+          }}
+        />
+        <div className="absolute inset-y-0 right-0 flex items-center">
+          {adaBersih && (
+            <button
+              type="button"
+              className="grid h-11 w-11 place-items-center text-mist-400 hover:text-mist-100"
+              aria-label="Hapus pilihan"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onPilih(null)
+                setCari("")
+                setBuka(true)
+                input.current?.focus()
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="grid h-11 w-11 place-items-center text-mist-400 hover:text-mist-100"
+            aria-label={buka ? "Tutup daftar barang" : "Buka daftar barang"}
+            aria-expanded={buka}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => {
+              if (buka) tutup()
+              else bukaDaftar()
+            }}
+          >
+            <ChevronDown size={18} className={buka ? "rotate-180" : undefined} />
+          </button>
+        </div>
+      </div>
+      {buka && (
+        <div ref={panel} id={daftarId} role="listbox" aria-labelledby={`${daftarId}-label`} className="mt-1 max-h-56 overflow-auto rounded-xl border border-white/10 bg-ink-950">
+          {memuat && <Loading letak="baris" />}
+          {!memuat && daftar.length === 0 && <p className="px-3 py-3 text-sm text-mist-500">Tidak ada barang yang cocok.</p>}
+          {daftar.map((item, i) => (
+            <button
+              key={item.id}
+              id={`${daftarId}-${item.id}`}
+              type="button"
+              role="option"
+              data-indeks={i}
+              aria-selected={dipilih === item.id}
+              tabIndex={-1}
+              onPointerDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setSorot(i)}
+              onClick={() => pilih(item.id)}
+              className={cn(
+                "block w-full px-3 py-2 text-left",
+                dipilih === item.id ? "bg-amber-500/15" : i === indeks ? "bg-white/10" : "hover:bg-white/5",
+              )}
+            >
+              <span className="block truncate font-medium">{labelJenis(item.jenis)} · {item.model} · <LabelWarna nama={item.warna} /></span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

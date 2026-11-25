@@ -1,13 +1,13 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
-import { Box, Download, Package, ScrollText, UserRound } from "lucide-react"
+import { Box, Download, Handbag, ScrollText, UserRound } from "lucide-react"
 import { usePasangAplikasi } from "../lib/pasang"
 import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
 import { Sheet, cn } from "./ui"
 
 const menu = [
   { to: "/dus", label: "Dus", icon: Box, end: false },
-  { to: "/barang", label: "Barang", icon: Package, end: false },
+  { to: "/barang", label: "Barang", icon: Handbag, end: false },
   { to: "/riwayat", label: "Riwayat", icon: ScrollText, end: false },
   { to: "/profil", label: "Profil", icon: UserRound, end: true },
 ]
@@ -46,7 +46,6 @@ export function AppShell() {
             ))}
           </nav>
           <footer className="space-y-3 px-1">
-            <p className="text-xs leading-relaxed text-mist-500">Stok tas, botol minum, dan kotak makan, dicatat per dus.</p>
             <AksiAplikasi onPerbarui={perbarui} onPasang={pasangAplikasi} />
           </footer>
         </aside>

@@ -4,6 +4,7 @@ import type {
   BarisEkspor,
   Dus,
   DusInput,
+  FotoUnggah,
   IsiBarang,
   IsiDus,
   ItemPindah,
@@ -12,7 +13,8 @@ import type {
   RiwayatItem,
   SebaranDus,
 } from "../types"
-import { bandingKode, kosongJadiNull, labelJenis, normKode, normTeks } from "./format"
+import { hapusBerkasFoto, pathKecil, tautanFoto, unggahFoto } from "./foto"
+import { bandingDus, bandingKode, kosongJadiNull, labelJenis, normKode, normTeks } from "./format"
 import { db } from "./supabase"
 
 type Row = Record<string, unknown>
@@ -42,13 +44,26 @@ function jenisRiwayat(nilai: unknown): JenisRiwayat {
   throw new Error("Jenis riwayat tidak dikenali.")
 }
 
-function mapBarangRingkas(row: Row): IsiBarang {
+function urlFoto(row: Row, tautan: ReadonlyMap<string, string>) {
+  const foto_path = teks(row.foto_path)
+  const kecil = foto_path ? pathKecil(foto_path) : null
+  return {
+    foto_path,
+    foto_kecil_url: (kecil ? tautan.get(kecil) : undefined) ?? (foto_path ? tautan.get(foto_path) : undefined) ?? null,
+    foto_url: (foto_path ? tautan.get(foto_path) : undefined) ?? null,
+  }
+}
+
+function mapBarangRingkas(row: Row, tautan: ReadonlyMap<string, string> = new Map()): IsiBarang {
+  const foto = urlFoto(row, tautan)
   return {
     id: String(row.id),
     kode: String(row.kode),
     jenis: jenisBarang(row.jenis),
     model: String(row.model),
     warna: String(row.warna),
+    foto_kecil_url: foto.foto_kecil_url,
+    foto_url: foto.foto_url,
   }
 }
 
@@ -56,7 +71,6 @@ function mapDus(row: Row): Dus {
   return {
     id: String(row.id),
     kode: String(row.kode),
-    nama: teks(row.nama),
     lokasi: teks(row.lokasi),
     catatan: teks(row.catatan),
     created_at: String(row.created_at),
@@ -66,15 +80,34 @@ function mapDus(row: Row): Dus {
   }
 }
 
-function mapBarang(row: Row): Barang {
+function mapBarang(row: Row, tautan: ReadonlyMap<string, string>): Barang {
+  const foto = urlFoto(row, tautan)
   return {
-    ...mapBarangRingkas(row),
+    ...mapBarangRingkas(row, tautan),
     catatan: teks(row.catatan),
+    foto_path: foto.foto_path,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
     jumlah_dus: angka(row.jumlah_dus),
     total_pcs: angka(row.total_pcs),
   }
+}
+
+async function denganFoto(rows: Row[]) {
+  const paths: string[] = []
+  for (const row of rows) {
+    const penuh = teks(row.foto_path)
+    if (!penuh) continue
+    paths.push(penuh, pathKecil(penuh))
+  }
+  const tautan = await tautanFoto(paths)
+  return rows.map((row) => mapBarang(row, tautan))
+}
+
+async function bacaFotoPath(id: string) {
+  const { data, error } = await db().from("barang").select("foto_path").eq("id", id).maybeSingle()
+  if (error) throw error
+  return teks((data as Row | null)?.foto_path)
 }
 
 export async function listDus() {
@@ -90,12 +123,26 @@ export async function getDus(id: string) {
 }
 
 export async function listIsiDus(dusId: string) {
-  const { data, error } = await db()
-    .from("isi_dus")
-    .select("id, dus_id, barang_id, jumlah, barang:barang_id(id, kode, jenis, model, warna)")
-    .eq("dus_id", dusId)
-  if (error) throw error
-  return ((data ?? []) as Row[])
+  const denganFoto = "id, dus_id, barang_id, jumlah, barang:barang_id(id, kode, jenis, model, warna, foto_path)"
+  const tanpaFoto = "id, dus_id, barang_id, jumlah, barang:barang_id(id, kode, jenis, model, warna)"
+  const pertama = await db().from("isi_dus").select(denganFoto).eq("dus_id", dusId)
+  let data: unknown = pertama.data
+  if (pertama.error) {
+    if (!/foto_path|schema cache|does not exist/i.test(`${pertama.error.message} ${pertama.error.details ?? ""}`)) throw pertama.error
+    const kedua = await db().from("isi_dus").select(tanpaFoto).eq("dus_id", dusId)
+    if (kedua.error) throw kedua.error
+    data = kedua.data
+  }
+  const rows = ((data ?? []) as Row[])
+  const paths: string[] = []
+  for (const row of rows) {
+    const barang = objek<Row>(row.barang)
+    const penuh = barang ? teks(barang.foto_path) : null
+    if (!penuh) continue
+    paths.push(penuh, pathKecil(penuh))
+  }
+  const tautan = await tautanFoto(paths)
+  return rows
     .map((row) => {
       const barang = objek<Row>(row.barang)
       if (!barang) throw new Error("Data barang di dalam dus tidak lengkap.")
@@ -104,7 +151,7 @@ export async function listIsiDus(dusId: string) {
         dus_id: String(row.dus_id),
         barang_id: String(row.barang_id),
         jumlah: angka(row.jumlah),
-        barang: mapBarangRingkas(barang),
+        barang: mapBarangRingkas(barang, tautan),
       } satisfies IsiDus
     })
     .sort((a, b) => bandingKode(a.barang.kode, b.barang.kode))
@@ -113,7 +160,6 @@ export async function listIsiDus(dusId: string) {
 export async function simpanDus(id: string | null, input: DusInput) {
   const payload = {
     kode: normKode(input.kode),
-    nama: kosongJadiNull(input.nama),
     lokasi: kosongJadiNull(input.lokasi),
     catatan: kosongJadiNull(input.catatan),
   }
@@ -136,7 +182,8 @@ export async function hapusDus(id: string) {
 export async function listBarang() {
   const { data, error } = await db().from("v_barang_ringkas").select("*")
   if (error) throw error
-  return ((data ?? []) as Row[]).map(mapBarang).sort((a, b) => {
+  const barang = await denganFoto((data ?? []) as Row[])
+  return barang.sort((a, b) => {
     const jenis = labelUrut(a.jenis).localeCompare(labelUrut(b.jenis), "id")
     if (jenis !== 0) return jenis
     const model = a.model.localeCompare(b.model, "id", { sensitivity: "base" })
@@ -154,13 +201,15 @@ function labelUrut(jenis: JenisBarang) {
 export async function getBarang(id: string) {
   const { data, error } = await db().from("v_barang_ringkas").select("*").eq("id", id).maybeSingle()
   if (error) throw error
-  return data ? mapBarang(data as Row) : null
+  if (!data) return null
+  const [barang] = await denganFoto([data as Row])
+  return barang ?? null
 }
 
 export async function listSebaran(barangId: string) {
   const { data, error } = await db()
     .from("isi_dus")
-    .select("id, jumlah, dus:dus_id(id, kode, nama, lokasi)")
+    .select("id, jumlah, dus:dus_id(id, kode, lokasi)")
     .eq("barang_id", barangId)
   if (error) throw error
   return ((data ?? []) as Row[])
@@ -173,17 +222,16 @@ export async function listSebaran(barangId: string) {
         dus: {
           id: String(dus.id),
           kode: String(dus.kode),
-          nama: teks(dus.nama),
           lokasi: teks(dus.lokasi),
         },
       } satisfies SebaranDus
     })
-    .sort((a, b) => bandingKode(a.dus.kode, b.dus.kode))
+    .sort((a, b) => bandingDus(a.dus, b.dus))
 }
 
-export async function simpanBarang(id: string | null, input: BarangInput) {
+export async function simpanBarang(id: string | null, input: BarangInput, foto: FotoUnggah = { berkas: null, hapus: false }) {
   const model = normTeks(input.model)
-  const payload = {
+  const payload: Record<string, unknown> = {
     kode: normKode(model),
     jenis: input.jenis,
     model,
@@ -193,19 +241,42 @@ export async function simpanBarang(id: string | null, input: BarangInput) {
   if (!payload.model) throw new Error("Model wajib diisi.")
   if (!payload.warna) throw new Error("Warna wajib diisi.")
   if (payload.jenis !== "tas" && payload.jenis !== "botol" && payload.jenis !== "kotak") throw new Error("Pilih jenis barang.")
-  if (id) {
-    const { error } = await db().from("barang").update(payload).eq("id", id)
-    if (error) throw error
-    return id
+
+  if (!id) {
+    const baru = crypto.randomUUID()
+    let path: string | null = null
+    if (foto.berkas) {
+      path = await unggahFoto(baru, foto.berkas)
+      payload.foto_path = path
+    }
+    const { data, error } = await db().from("barang").insert({ ...payload, id: baru }).select("id").single()
+    if (error) {
+      if (path) await hapusBerkasFoto(path).catch(() => undefined)
+      throw error
+    }
+    return String((data as Row).id)
   }
-  const { data, error } = await db().from("barang").insert(payload).select("id").single()
-  if (error) throw error
-  return String((data as Row).id)
+
+  const lama = foto.berkas || foto.hapus ? await bacaFotoPath(id) : null
+  if (foto.berkas) payload.foto_path = await unggahFoto(id, foto.berkas)
+  else if (foto.hapus) payload.foto_path = null
+
+  const { error } = await db().from("barang").update(payload).eq("id", id)
+  if (error) {
+    if (typeof payload.foto_path === "string") await hapusBerkasFoto(payload.foto_path).catch(() => undefined)
+    throw error
+  }
+  if (lama && lama !== payload.foto_path) await hapusBerkasFoto(lama).catch(() => undefined)
+  return id
 }
 
 export async function hapusBarang(id: string) {
+  const baca = await db().from("barang").select("foto_path").eq("id", id).maybeSingle()
+  if (baca.error && !/foto_path|schema cache|does not exist/i.test(`${baca.error.message} ${baca.error.details ?? ""}`)) throw baca.error
+  const path = baca.error ? null : teks((baca.data as Row | null)?.foto_path)
   const { error } = await db().from("barang").delete().eq("id", id)
   if (error) throw error
+  if (path) await hapusBerkasFoto(path).catch(() => undefined)
 }
 
 export async function tambahIsi(dusId: string, barangId: string, jumlah: number, keterangan?: string) {

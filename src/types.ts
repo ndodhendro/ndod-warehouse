@@ -4,7 +4,6 @@ export type JenisRiwayat = "masuk" | "keluar" | "pindah" | "koreksi"
 export interface Dus {
   id: string
   kode: string
-  nama: string | null
   lokasi: string | null
   catatan: string | null
   created_at: string
@@ -20,6 +19,9 @@ export interface Barang {
   model: string
   warna: string
   catatan: string | null
+  foto_path: string | null
+  foto_kecil_url: string | null
+  foto_url: string | null
   created_at: string
   updated_at: string
   jumlah_dus: number
@@ -32,6 +34,8 @@ export interface IsiBarang {
   jenis: JenisBarang
   model: string
   warna: string
+  foto_kecil_url: string | null
+  foto_url: string | null
 }
 
 export interface IsiDus {
@@ -48,7 +52,6 @@ export interface SebaranDus {
   dus: {
     id: string
     kode: string
-    nama: string | null
     lokasi: string | null
   }
 }
@@ -72,7 +75,6 @@ export interface RiwayatItem {
 
 export interface DusInput {
   kode: string
-  nama: string
   lokasi: string
   catatan: string
 }
@@ -83,6 +85,11 @@ export interface BarangInput {
   model: string
   warna: string
   catatan: string
+}
+
+export interface FotoUnggah {
+  berkas: File | null
+  hapus: boolean
 }
 
 export interface ItemPindah {

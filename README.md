@@ -18,7 +18,7 @@ Stok tidak diubah langsung dari browser. Tambah, koreksi, dan pindah barang lewa
 
 1. Buat project di [supabase.com](https://supabase.com).
 2. Buka **SQL Editor**.
-3. Jalankan file di `supabase/migrations` sesuai urutan nama. Database kosong mulai dari `20261124000000_init.sql`. Database yang sudah terisi cukup menjalankan file yang belum pernah dijalankan, termasuk `20261125120000_login_google.sql`.
+3. Jalankan file di `supabase/migrations` sesuai urutan nama. Database kosong mulai dari `20261124000000_init.sql`. Database yang sudah terisi cukup menjalankan file yang belum pernah dijalankan. Yang terbaru, `20261125160000_hapus_nama_dus.sql`, menghapus kolom nama pada tabel dus. File sebelumnya, `20261125140000_foto_barang.sql`, menambah satu foto per barang dan akses bucket Storage `ndod-warehouse`. Bucket itu boleh sudah ada; skrip menutupnya dari publik dan hanya mengizinkan akun yang lolos login.
 4. Dari **Project Settings → API Keys**, salin Project URL dan publishable key (`sb_publishable_...`).
 5. Aktifkan login Google. Langkahnya di bagian berikut.
 

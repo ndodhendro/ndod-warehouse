@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
-import { ChevronRight, Plus } from "lucide-react"
+import { ChevronRight, Handbag, Plus } from "lucide-react"
+import { FotoBarang } from "../components/FotoBarang"
 import { LabelWarna } from "../components/LabelWarna"
 import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
-import { formatAngka, labelJenis } from "../lib/format"
+import { cocokKata, formatAngka, labelJenis } from "../lib/format"
 import { useBarangList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
 import type { JenisBarang } from "../types"
@@ -17,21 +18,20 @@ export function BarangList() {
   const query = useBarangList()
   const [cari, setCari] = useState("")
   const [saring, setSaring] = useState<Saring>("semua")
-  const kata = cari.trim().toLowerCase()
 
   const daftar = useMemo(() => {
     return (query.data ?? []).filter((item) => {
       if (saring !== "semua" && item.jenis !== saring) return false
-      if (!kata) return true
-      return [item.kode, item.model, item.warna, item.catatan, labelJenis(item.jenis)].some((nilai) => nilai?.toLowerCase().includes(kata))
+      return cocokKata(cari, [item.kode, item.model, item.warna, item.catatan, labelJenis(item.jenis)])
     })
-  }, [query.data, kata, saring])
+  }, [query.data, cari, saring])
 
   return (
     <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
       <PageHeader
+        icon={Handbag}
         title="Barang"
-        subtitle="Satu barang adalah satu jenis, model, dan warna."
+        subtitle=""
         action={<LinkButton to="/barang/baru" className="px-3"><Plus size={18} /> Barang</LinkButton>}
       />
       {!siap ? (
@@ -45,7 +45,7 @@ export function BarangList() {
       ) : (
         <>
           <RingkasanStok />
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari jenis, model, atau warna barang" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
             <Chip aktif={saring === "tas"} onClick={() => setSaring("tas")}>Tas</Chip>
@@ -61,21 +61,21 @@ export function BarangList() {
           ) : (
             <Card className="mt-4 divide-y divide-white/5">
               {daftar.map((item) => (
-                <Link key={item.id} to={`/barang/${item.id}`} className="flex items-center gap-3 px-4 py-3">
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  <FotoBarang kecil={item.foto_kecil_url} penuh={item.foto_url} nama={item.model} />
+                  <Link to={`/barang/${item.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="min-w-0 flex-1">
                       <Badge tone={item.jenis}>{labelJenis(item.jenis)}</Badge>
-                      <span className="text-xs text-mist-500">{item.kode}</span>
+                      <span className="mt-1 block truncate font-semibold">{item.model}</span>
+                      <LabelWarna nama={item.warna} className="block text-sm text-mist-500" />
                     </span>
-                    <span className="mt-1 block truncate font-semibold">{item.model}</span>
-                    <LabelWarna nama={item.warna} className="block text-sm text-mist-500" />
-                  </span>
-                  <span className="text-right">
-                    <span className="block font-semibold tabular-nums">{formatAngka(item.total_pcs)} pcs</span>
-                    <span className="text-xs text-mist-500">{formatAngka(item.jumlah_dus)} dus</span>
-                  </span>
-                  <ChevronRight size={18} className="text-mist-500" />
-                </Link>
+                    <span className="text-right">
+                      <span className="block font-semibold tabular-nums">{formatAngka(item.total_pcs)} pcs</span>
+                      <span className="text-xs text-mist-500">{formatAngka(item.jumlah_dus)} dus</span>
+                    </span>
+                    <ChevronRight size={18} className="text-mist-500" />
+                  </Link>
+                </div>
               ))}
             </Card>
           )}

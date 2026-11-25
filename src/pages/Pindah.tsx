@@ -1,16 +1,20 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Minus, Plus } from "lucide-react"
+import { MapPin } from "lucide-react"
+import { FotoBarang } from "../components/FotoBarang"
+import { PengaturJumlah } from "../components/PengaturJumlah"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { EmptyState, ErrorBox, Field, FormActions, Loading, PageHeader, useToast } from "../components/ui"
+import { Badge, EmptyState, ErrorBox, Field, FormActions, Loading, PageHeader, SearchField, useToast } from "../components/ui"
 import { pindahSebagian, pindahSemua } from "../lib/api"
 import { pesanError } from "../lib/errors"
-import { formatAngka, labelJenis } from "../lib/format"
+import { cocokKata, formatAngka, labelJenis } from "../lib/format"
 import { useDusList, useIsiDus } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
-import type { IsiDus } from "../types"
+import type { IsiDus, JenisBarang } from "../types"
+
+type Saring = "semua" | JenisBarang
 
 type StatusBaris = { pilih: boolean; jumlah: string }
 type Pilihan = Record<string, StatusBaris>
@@ -43,6 +47,16 @@ export function Pindah() {
   const [tujuan, setTujuan] = useState("")
   const [catatan, setCatatan] = useState("")
   const [pilihan, setPilihan] = useState<Pilihan>({})
+  const [cari, setCari] = useState("")
+  const [saring, setSaring] = useState<Saring>("semua")
+
+  const baris = isi.data ?? []
+  const tampilan = useMemo(() => {
+    return baris.filter((row) => {
+      if (saring !== "semua" && row.barang.jenis !== saring) return false
+      return cocokKata(cari, [row.barang.kode, row.barang.model, row.barang.warna, labelJenis(row.barang.jenis)])
+    })
+  }, [baris, cari, saring])
 
   useEffect(() => {
     if (!isi.data) return
@@ -103,11 +117,11 @@ export function Pindah() {
   if (dus.error || isi.error) return <ErrorBox error={dus.error ?? isi.error} />
   if (!asal) return <PageHeader title="Dus tidak ditemukan" back="/dus" />
 
-  const baris = isi.data ?? []
   const fokus = awal ? baris.find((row) => row.barang_id === awal) : undefined
   const daftar = fokus ? [fokus] : baris
-  const semuaCentang = daftar.length > 0 && daftar.every((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih)
-  const sebagianCentang = daftar.some((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih) && !semuaCentang
+  const terlihat = fokus ? daftar : tampilan
+  const semuaCentang = terlihat.length > 0 && terlihat.every((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih)
+  const sebagianCentang = terlihat.some((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih) && !semuaCentang
   const pcsTerpilih = daftar.reduce((total, row) => {
     if (!statusBaris(row, pilihan, Boolean(fokus)).pilih) return total
     return total + jumlahBaris(row, pilihan, Boolean(fokus))
@@ -117,7 +131,7 @@ export function Pindah() {
   const aturSemua = (centang: boolean) => {
     setPilihan((now) => {
       const next = { ...now }
-      for (const row of daftar) {
+      for (const row of terlihat) {
         const sebelumnya = now[row.barang_id] ?? { pilih: false, jumlah: String(row.jumlah) }
         next[row.barang_id] = {
           pilih: centang,
@@ -131,9 +145,21 @@ export function Pindah() {
   return (
     <div>
       <PageHeader
-        kicker={asal.kode}
+        kicker={fokus ? asal.kode : undefined}
         title={fokus ? `Pindahkan ${fokus.barang.model}` : "Pindahkan barang"}
-        subtitle={fokus ? <>{labelJenis(fokus.barang.jenis)} · <LabelWarna nama={fokus.barang.warna} /></> : asal.nama || asal.lokasi || "Dari dus ini ke dus lain."}
+        subtitle={
+          fokus ? (
+            <>{labelJenis(fokus.barang.jenis)} · <LabelWarna nama={fokus.barang.warna} /></>
+          ) : (
+            <>
+              <span className="block text-2xl font-semibold tracking-tight text-mist-100">{asal.kode}</span>
+              <span className="mt-1 flex min-w-0 items-center gap-1">
+                <MapPin size={14} className="shrink-0 text-amber-300" />
+                <span className="min-w-0 truncate">{asal.lokasi || "Lokasi belum diisi"}</span>
+              </span>
+            </>
+          )
+        }
         back={awal ? `/barang/${awal}` : `/dus/${id}`}
       />
       {awal && !fokus ? (
@@ -150,6 +176,23 @@ export function Pindah() {
             simpan.mutate()
           }}
         >
+          {!fokus && (
+            <div>
+              <div
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault()
+                }}
+              >
+                <SearchField value={cari} onChange={setCari} placeholder="Cari jenis, model, atau warna barang" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
+                <Chip aktif={saring === "tas"} onClick={() => setSaring("tas")}>Tas</Chip>
+                <Chip aktif={saring === "botol"} onClick={() => setSaring("botol")}>Botol minum</Chip>
+                <Chip aktif={saring === "kotak"} onClick={() => setSaring("kotak")}>Kotak makan</Chip>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             {!fokus && daftar.length > 1 && (
               <label className="flex min-h-11 items-center gap-3 rounded-2xl border border-white/10 bg-ink-800/80 px-3 py-3">
@@ -158,7 +201,9 @@ export function Pindah() {
                 <span className="text-sm font-semibold tabular-nums text-mist-300">{formatAngka(pcsTerpilih)} pcs</span>
               </label>
             )}
-            {daftar.map((row) => {
+            {terlihat.length === 0 ? (
+              <p className="mt-6 text-sm text-mist-500">Tidak ada barang yang cocok.</p>
+            ) : terlihat.map((row) => {
               const state = statusBaris(row, pilihan, Boolean(fokus))
               const nilai = jumlahBaris(row, pilihan, Boolean(fokus))
               const ubahJumlah = (berikutnya: number) => {
@@ -185,21 +230,24 @@ export function Pindah() {
                       }}
                     />
                   )}
+                  <FotoBarang kecil={row.barang.foto_kecil_url} penuh={row.barang.foto_url} nama={row.barang.model} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{row.barang.model}</span>
-                    <span className="block text-xs text-mist-500">
-                      {labelJenis(row.barang.jenis)} · <LabelWarna nama={row.barang.warna} /> · stok {formatAngka(row.jumlah)}
+                    <Badge tone={row.barang.jenis}>{labelJenis(row.barang.jenis)}</Badge>
+                    <span className="mt-1 block truncate font-semibold">{row.barang.model}</span>
+                    <span className="block truncate text-sm text-mist-500">
+                      <LabelWarna nama={row.barang.warna} />
+                      {" · "}
+                      {formatAngka(row.jumlah)} pcs
                     </span>
                   </span>
-                  <div className={state.pilih ? "flex items-center gap-1" : "flex items-center gap-1 opacity-40"}>
-                    <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Kurangi ${row.barang.model}`} disabled={!state.pilih} onClick={() => ubahJumlah(nilai - 1)}>
-                      <Minus size={16} />
-                    </button>
-                    <span className="w-10 text-center font-semibold tabular-nums">{formatAngka(nilai)}</span>
-                    <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Tambah ${row.barang.model}`} disabled={!state.pilih} onClick={() => ubahJumlah(nilai + 1)}>
-                      <Plus size={16} />
-                    </button>
-                  </div>
+                  <PengaturJumlah
+                    nilai={nilai}
+                    min={1}
+                    max={row.jumlah}
+                    label={row.barang.model}
+                    disabled={!state.pilih}
+                    onUbah={ubahJumlah}
+                  />
                 </div>
               )
             })}
@@ -215,13 +263,12 @@ export function Pindah() {
               {calonTujuan.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.kode}
-                  {item.nama ? ` · ${item.nama}` : ""}
                   {item.lokasi ? ` · ${item.lokasi}` : ""}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Catatan" hint="Opsional. Misalnya pindah rak atau gabung dus.">
+          <Field label="Catatan" hint="">
             <input className="field" placeholder="Opsional" maxLength={200} value={catatan} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
           <FormActions
@@ -233,6 +280,18 @@ export function Pindah() {
         </form>
       )}
     </div>
+  )
+}
+
+function Chip({ aktif, onClick, children }: { aktif: boolean; onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={aktif ? "rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-ink-950" : "rounded-full bg-white/5 px-3 py-1.5 text-sm text-mist-300"}
+    >
+      {children}
+    </button>
   )
 }
 

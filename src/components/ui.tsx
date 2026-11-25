@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useState, createContext, type ButtonHTMLAttributes, type ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeft, LoaderCircle, X } from "lucide-react"
+import { ArrowLeft, LoaderCircle, X, type LucideIcon } from "lucide-react"
 import { pesanError } from "../lib/errors"
 
 export function cn(...parts: Array<string | false | null | undefined>) {
@@ -90,12 +90,14 @@ export function PageHeader({
   subtitle,
   back,
   action,
+  icon: Icon,
 }: {
   kicker?: string
   title: string
   subtitle?: ReactNode
   back?: string
   action?: ReactNode
+  icon?: LucideIcon
 }) {
   return (
     <header className="mb-5 flex items-start justify-between gap-3">
@@ -107,7 +109,10 @@ export function PageHeader({
           </Link>
         )}
         {kicker && <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-400">{kicker}</p>}
-        <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="flex min-w-0 items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          {Icon && <Icon size={22} className="shrink-0 text-amber-300" aria-hidden />}
+          <span className="truncate">{title}</span>
+        </h1>
         {subtitle && <p className="mt-1 text-sm text-mist-300">{subtitle}</p>}
       </div>
       {action}
@@ -246,7 +251,7 @@ export function SearchField({
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape" && !event.defaultPrevented) onClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
