@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { useEffect, useState } from "react"
-import { Box, Package, ScrollText } from "lucide-react"
+import { Box, Download, Package, ScrollText } from "lucide-react"
+import { usePasangAplikasi } from "../lib/pasang"
 import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
-import { cn } from "./ui"
+import { Sheet, cn } from "./ui"
 
 const menu = [
   { to: "/dus", label: "Dus", icon: Box, end: false },
@@ -19,7 +20,9 @@ function tautanClass(active: boolean) {
 
 export function AppShell() {
   const pembaruan = usePembaruanAplikasi()
+  const pasang = usePasangAplikasi()
   const perbarui = pembaruan.tampilkanTombol ? pembaruan.perbarui : undefined
+  const pasangAplikasi = pasang.tampilkan ? pasang.pasang : undefined
 
   return (
     <div className="min-h-dvh bg-ink-950 text-mist-100">
@@ -37,7 +40,10 @@ export function AppShell() {
           </nav>
           <footer className="space-y-2 px-1">
             <p className="text-xs leading-relaxed text-mist-500">Stok tas, botol minum, dan kotak makan, dicatat per dus.</p>
-            <VersiAplikasi onPerbarui={perbarui} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <VersiAplikasi onPerbarui={perbarui} />
+              {pasangAplikasi && <TombolPasang onClick={pasangAplikasi} />}
+            </div>
           </footer>
         </aside>
         <div className="min-w-0">
@@ -47,9 +53,14 @@ export function AppShell() {
           </main>
         </div>
       </div>
-      <MobileNav onPerbarui={perbarui} />
+      <MobileNav onPerbarui={perbarui} onPasang={pasangAplikasi} />
       {pembaruan.dialogTerbuka && (
         <DialogPembaruan memuat={pembaruan.memuat} onNanti={pembaruan.nanti} onPerbarui={pembaruan.perbarui} />
+      )}
+      {pasang.petunjuk && (
+        <Sheet title="Pasang di iPhone" onClose={pasang.tutupPetunjuk}>
+          <p className="text-sm text-mist-300">Di Safari, ketuk Bagikan, lalu pilih Tambahkan ke Layar Utama.</p>
+        </Sheet>
       )}
     </div>
   )
@@ -84,14 +95,31 @@ function VersiAplikasi({ className, onPerbarui }: { className?: string; onPerbar
   )
 }
 
-function MobileNav({ onPerbarui }: { onPerbarui?: () => void }) {
+function TombolPasang({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-8 items-center gap-1 rounded-full bg-amber-500 px-3 text-[11px] font-semibold text-ink-950 shadow-[0_8px_20px_rgba(238,77,45,0.4)]"
+    >
+      <Download size={13} />
+      Pasang
+    </button>
+  )
+}
+
+function MobileNav({ onPerbarui, onPasang }: { onPerbarui?: () => void; onPasang?: () => void }) {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink-950/90 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigasi utama"
     >
-      <VersiAplikasi onPerbarui={onPerbarui} className="justify-center pt-1.5" />
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 pb-1 pt-1.5">
+        <span />
+        <VersiAplikasi onPerbarui={onPerbarui} className="justify-center" />
+        <div className="justify-self-end">{onPasang && <TombolPasang onClick={onPasang} />}</div>
+      </div>
       <div className="mx-auto grid max-w-lg grid-cols-3 px-2">
         {menu.map((item) => (
           <ItemNav key={item.to} {...item} />

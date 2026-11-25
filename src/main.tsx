@@ -11,6 +11,7 @@ import "@fontsource/manrope/latin-ext-500.css"
 import "@fontsource/manrope/latin-ext-600.css"
 import "@fontsource/manrope/latin-ext-700.css"
 import "./index.css"
+import "./lib/pasang"
 import App from "./App"
 import { ConfirmProvider, ToastProvider } from "./components/ui"
 
