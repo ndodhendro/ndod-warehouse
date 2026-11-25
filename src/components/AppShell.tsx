@@ -58,7 +58,7 @@ export function AppShell() {
         <DialogPembaruan memuat={pembaruan.memuat} onNanti={pembaruan.nanti} onPerbarui={pembaruan.perbarui} />
       )}
       {pasang.petunjuk && (
-        <Sheet title="Pasang di iPhone" onClose={pasang.tutupPetunjuk}>
+        <Sheet title="Install di iPhone" onClose={pasang.tutupPetunjuk}>
           <p className="text-sm text-mist-300">Di Safari, ketuk Bagikan, lalu pilih Tambahkan ke Layar Utama.</p>
         </Sheet>
       )}
@@ -103,7 +103,7 @@ function TombolPasang({ onClick }: { onClick: () => void }) {
       className="inline-flex min-h-8 items-center gap-1 rounded-full bg-amber-500 px-3 text-[11px] font-semibold text-ink-950 shadow-[0_8px_20px_rgba(238,77,45,0.4)]"
     >
       <Download size={13} />
-      Pasang
+      Install
     </button>
   )
 }
