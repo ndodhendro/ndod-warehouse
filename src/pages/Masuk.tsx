@@ -69,6 +69,7 @@ export function HalamanMasuk() {
       <div className="mb-6 flex flex-col items-center gap-1 text-center">
         <img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" width={56} height={56} className="h-14 w-14 rounded-2xl" />
         <h1 className="text-lg font-semibold">Ndod Warehouse</h1>
+        <p className="text-xs tabular-nums text-mist-500">Versi {__APP_VERSION__}</p>
       </div>
       {siap ? (
         <Card className="p-5">

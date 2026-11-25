@@ -9,6 +9,7 @@ import { DusForm } from "./pages/DusForm"
 import { DusList } from "./pages/DusList"
 import { HalamanDitolak, HalamanMasuk } from "./pages/Masuk"
 import { Pindah } from "./pages/Pindah"
+import { HalamanProfil } from "./pages/Profil"
 import { RiwayatPage } from "./pages/Riwayat"
 import { LinkButton, Loading, PageHeader } from "./components/ui"
 import { useSesi } from "./lib/sesi"
@@ -19,7 +20,7 @@ export default function App() {
   if (sesi.status === "memuat" || sesi.status === "memeriksa") {
     return (
       <BingkaiAkun>
-        <Loading label={sesi.status === "memeriksa" ? "Memeriksa akun..." : "Membuka sesi..."} />
+        <Loading letak="baris" label={sesi.status === "memeriksa" ? "Memeriksa akun..." : "Membuka sesi..."} />
       </BingkaiAkun>
     )
   }
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="barang/:id" element={<BarangDetail />} />
         <Route path="barang/:id/edit" element={<BarangForm />} />
         <Route path="riwayat" element={<RiwayatPage />} />
+        <Route path="profil" element={<HalamanProfil />} />
         <Route
           path="*"
           element={

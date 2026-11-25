@@ -1,15 +1,15 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
-import { Box, Download, LogOut, Package, ScrollText } from "lucide-react"
+import { Box, Download, Package, ScrollText, UserRound } from "lucide-react"
 import { usePasangAplikasi } from "../lib/pasang"
 import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
-import { Sheet, cn, useConfirm } from "./ui"
-import { useSesi } from "../lib/sesi"
+import { Sheet, cn } from "./ui"
 
 const menu = [
   { to: "/dus", label: "Dus", icon: Box, end: false },
   { to: "/barang", label: "Barang", icon: Package, end: false },
   { to: "/riwayat", label: "Riwayat", icon: ScrollText, end: false },
+  { to: "/profil", label: "Profil", icon: UserRound, end: true },
 ]
 
 function tautanClass(active: boolean) {
@@ -46,19 +46,15 @@ export function AppShell() {
             ))}
           </nav>
           <footer className="space-y-3 px-1">
-            <AkunMasuk />
             <p className="text-xs leading-relaxed text-mist-500">Stok tas, botol minum, dan kotak makan, dicatat per dus.</p>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <VersiAplikasi onPerbarui={perbarui} />
-              {pasangAplikasi && <TombolPasang onClick={pasangAplikasi} />}
-            </div>
+            <AksiAplikasi onPerbarui={perbarui} onPasang={pasangAplikasi} />
           </footer>
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:block">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:min-h-dvh">
           <OfflineBanner />
           <main
             ref={mainRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-6 pt-[max(1.25rem,env(safe-area-inset-top))] md:overflow-visible md:px-8 md:pb-12 md:pt-8"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 pb-6 pt-[max(1.25rem,env(safe-area-inset-top))] md:overflow-visible md:px-8 md:pb-8 md:pt-8"
           >
             <Outlet />
           </main>
@@ -88,30 +84,35 @@ function Merek() {
   )
 }
 
-function VersiAplikasi({ className, onPerbarui }: { className?: string; onPerbarui?: () => void }) {
+function AksiAplikasi({ onPerbarui, onPasang, className }: { onPerbarui?: () => void; onPasang?: () => void; className?: string }) {
+  if (!onPerbarui && !onPasang) return null
+  const berbagi = Boolean(onPerbarui && onPasang)
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
-      <p className="text-[11px] tabular-nums text-mist-500">Versi {__APP_VERSION__}</p>
-      {onPerbarui && (
-        <button
-          type="button"
-          onClick={onPerbarui}
-          className="perbarui-glow rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-semibold leading-none text-ink-950"
-        >
-          Perbarui sekarang
-        </button>
-      )}
+    <div className={cn("flex items-stretch justify-center gap-2", berbagi && "w-full", className)}>
+      {onPerbarui && <TombolPerbarui onClick={onPerbarui} melebar={berbagi} />}
+      {onPasang && <TombolPasang onClick={onPasang} melebar={berbagi} />}
     </div>
   )
 }
 
-function TombolPasang({ onClick }: { onClick: () => void }) {
+function kelasAksi(melebar: boolean) {
+  return cn(
+    "inline-flex min-h-8 items-center justify-center gap-1 rounded-full bg-amber-500 px-3 text-center text-[11px] font-semibold leading-tight text-ink-950",
+    melebar && "min-w-0 flex-1",
+  )
+}
+
+function TombolPerbarui({ onClick, melebar }: { onClick: () => void; melebar: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex min-h-8 items-center gap-1 rounded-full bg-amber-500 px-3 text-[11px] font-semibold text-ink-950 shadow-[0_8px_20px_rgba(238,77,45,0.4)]"
-    >
+    <button type="button" onClick={onClick} className={cn(kelasAksi(melebar), "perbarui-glow")}>
+      Perbarui sekarang
+    </button>
+  )
+}
+
+function TombolPasang({ onClick, melebar }: { onClick: () => void; melebar: boolean }) {
+  return (
+    <button type="button" onClick={onClick} className={cn(kelasAksi(melebar), "shadow-[0_8px_20px_rgba(238,77,45,0.4)]")}>
       <Download size={13} />
       Install
     </button>
@@ -144,13 +145,8 @@ function MobileNav({ onPerbarui, onPasang }: { onPerbarui?: () => void; onPasang
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigasi utama"
     >
-      <AkunMasuk rapat />
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 pb-1 pt-1.5">
-        <span />
-        <VersiAplikasi onPerbarui={onPerbarui} className="justify-center" />
-        <div className="justify-self-end">{onPasang && <TombolPasang onClick={onPasang} />}</div>
-      </div>
-      <div className="mx-auto grid max-w-lg grid-cols-3 px-2">
+      <AksiAplikasi onPerbarui={onPerbarui} onPasang={onPasang} className="px-3 pb-1 pt-1.5" />
+      <div className="mx-auto grid max-w-lg grid-cols-4 px-2">
         {menu.map((item) => (
           <ItemNav key={item.to} {...item} />
         ))}
@@ -169,47 +165,6 @@ function ItemNav({ to, label, icon: Icon, end }: (typeof menu)[number]) {
         </>
       )}
     </NavLink>
-  )
-}
-
-function AkunMasuk({ rapat = false }: { rapat?: boolean }) {
-  const { email, nama, keluar } = useSesi()
-  const confirm = useConfirm()
-  const [sibuk, setSibuk] = useState(false)
-  const judul = nama || email || "Akun"
-
-  async function klik() {
-    const ya = await confirm({
-      title: "Keluar dari akun?",
-      body: "Sesi di perangkat ini dihapus. Perubahan berikutnya tercatat setelah masuk lagi.",
-      confirmLabel: "Keluar",
-      danger: true,
-    })
-    if (!ya) return
-    setSibuk(true)
-    try {
-      await keluar()
-    } catch {
-      setSibuk(false)
-    }
-  }
-
-  return (
-    <div className={cn("flex items-center gap-2", rapat ? "px-3 pt-2" : "rounded-xl bg-white/5 px-3 py-2")}>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-mist-100">{judul}</p>
-        {nama && email && <p className="truncate text-[11px] text-mist-500">{email}</p>}
-      </div>
-      <button
-        type="button"
-        onClick={() => void klik()}
-        disabled={sibuk}
-        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-mist-300 hover:bg-white/10 disabled:opacity-50"
-      >
-        <LogOut size={13} />
-        Keluar
-      </button>
-    </div>
   )
 }
 

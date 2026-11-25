@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 import { ChevronRight, MapPin, Plus } from "lucide-react"
 import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
-import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
+import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
 import { formatAngka } from "../lib/format"
 import { useDusList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
@@ -27,7 +27,7 @@ export function DusList() {
   }, [query.data, kata, saring])
 
   return (
-    <div>
+    <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
       <PageHeader
         title="Dus"
         subtitle="Kotak penyimpanan beserta lokasinya."
@@ -36,7 +36,9 @@ export function DusList() {
       {!siap ? (
         <SetupCard />
       ) : query.isLoading ? (
-        <Loading />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loading letak="baris" />
+        </div>
       ) : query.error ? (
         <ErrorBox error={query.error} />
       ) : (

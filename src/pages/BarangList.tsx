@@ -4,7 +4,7 @@ import { ChevronRight, Plus } from "lucide-react"
 import { LabelWarna } from "../components/LabelWarna"
 import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
-import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
+import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
 import { formatAngka, labelJenis } from "../lib/format"
 import { useBarangList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
@@ -28,7 +28,7 @@ export function BarangList() {
   }, [query.data, kata, saring])
 
   return (
-    <div>
+    <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
       <PageHeader
         title="Barang"
         subtitle="Satu barang adalah satu jenis, model, dan warna."
@@ -37,7 +37,9 @@ export function BarangList() {
       {!siap ? (
         <SetupCard />
       ) : query.isLoading ? (
-        <Loading />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loading letak="baris" />
+        </div>
       ) : query.error ? (
         <ErrorBox error={query.error} />
       ) : (

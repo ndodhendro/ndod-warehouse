@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { Card, EmptyState, ErrorBox, Loading, PageHeader } from "../components/ui"
+import { Card, EmptyState, ErrorBox, kelasAreaMuat, Loading, PageHeader } from "../components/ui"
 import { formatAngka, formatWaktu, labelJenis } from "../lib/format"
 import { warnaTeks } from "../lib/warna"
 import { useRiwayat } from "../lib/queries"
@@ -46,12 +46,14 @@ export function RiwayatPage() {
   const daftar = (query.data ?? []).filter((item) => saring === "semua" || item.jenis === saring)
 
   return (
-    <div>
+    <div className={siap && query.isLoading ? `relative ${kelasAreaMuat}` : undefined}>
       <PageHeader title="Riwayat" subtitle="Jejak barang masuk, keluar, koreksi, dan pindah dus." />
       {!siap ? (
         <SetupCard />
       ) : query.isLoading ? (
-        <Loading />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loading letak="baris" />
+        </div>
       ) : query.error ? (
         <ErrorBox error={query.error} />
       ) : query.data?.length === 0 ? (

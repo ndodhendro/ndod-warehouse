@@ -160,9 +160,25 @@ export function Field({
   )
 }
 
-export function Loading({ label = "Memuat..." }: { label?: string }) {
+const tinggiLayar = "min-h-[calc(100dvh-var(--tinggi-nav-bawah)-3.5rem)] md:min-h-[calc(100dvh-5rem)]"
+
+export const kelasAreaMuat = `flex flex-col ${tinggiLayar}`
+
+export function Loading({
+  label = "Memuat...",
+  letak = "layar",
+}: {
+  label?: string
+  letak?: "layar" | "baris"
+}) {
   return (
-    <div className="flex items-center gap-2 py-10 text-sm text-mist-300">
+    <div
+      className={cn(
+        "flex w-full items-center justify-center gap-2 text-sm text-mist-300",
+        letak === "layar" && tinggiLayar,
+        letak === "baris" && "py-6",
+      )}
+    >
       <LoaderCircle className="animate-spin" size={18} />
       {label}
     </div>
@@ -202,15 +218,28 @@ export function SearchField({
   onChange: (value: string) => void
   placeholder: string
 }) {
+  const adaIsi = value.length > 0
   return (
-    <input
-      className="field"
-      value={value}
-      placeholder={placeholder}
-      onChange={(event) => onChange(event.target.value)}
-      inputMode="search"
-      enterKeyHint="search"
-    />
+    <div className="relative">
+      <input
+        className={cn("field", adaIsi && "pr-11")}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        inputMode="search"
+        enterKeyHint="search"
+      />
+      {adaIsi && (
+        <button
+          type="button"
+          className="absolute inset-y-0 right-0 grid w-11 place-items-center text-mist-400 hover:text-mist-100"
+          onClick={() => onChange("")}
+          aria-label="Hapus pencarian"
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
   )
 }
 

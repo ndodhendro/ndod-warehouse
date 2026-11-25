@@ -262,7 +262,7 @@ function TambahKeDus({
         >
           <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
           <div className="max-h-56 space-y-1 overflow-auto">
-            {memuat && <Loading />}
+            {memuat && <Loading letak="baris" />}
             {daftar.map((item) => (
               <button
                 key={item.id}
