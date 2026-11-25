@@ -1,15 +1,35 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { Minus, Plus } from "lucide-react"
+import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
-import { Button, Card, EmptyState, ErrorBox, Field, Loading, PageHeader, useToast } from "../components/ui"
+import { Button, EmptyState, ErrorBox, Field, Loading, PageHeader, useToast } from "../components/ui"
 import { pindahSebagian, pindahSemua } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { formatAngka, labelJenis } from "../lib/format"
 import { useDusList, useIsiDus } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
+import type { IsiDus } from "../types"
 
-type Mode = "sebagian" | "semua"
+type StatusBaris = { pilih: boolean; jumlah: string }
+type Pilihan = Record<string, StatusBaris>
+
+function statusBaris(row: IsiDus, pilihan: Pilihan, fokus: boolean): StatusBaris {
+  return pilihan[row.barang_id] ?? { pilih: fokus, jumlah: String(row.jumlah) }
+}
+
+function jumlahBaris(row: IsiDus, pilihan: Pilihan, fokus: boolean) {
+  const jumlah = Number(statusBaris(row, pilihan, fokus).jumlah)
+  return Number.isInteger(jumlah) ? jumlah : row.jumlah
+}
+
+function isiPenuh(rows: IsiDus[], pilihan: Pilihan) {
+  return rows.length > 0 && rows.every((row) => {
+    const state = pilihan[row.barang_id]
+    return Boolean(state?.pilih) && Number(state.jumlah) === row.jumlah
+  })
+}
 
 export function Pindah() {
   const { id = "" } = useParams()
@@ -21,9 +41,8 @@ export function Pindah() {
   const dus = useDusList()
   const isi = useIsiDus(id)
   const [tujuan, setTujuan] = useState("")
-  const [mode, setMode] = useState<Mode>("sebagian")
   const [catatan, setCatatan] = useState("")
-  const [pilihan, setPilihan] = useState<Record<string, { pilih: boolean; jumlah: string }>>({})
+  const [pilihan, setPilihan] = useState<Pilihan>({})
 
   useEffect(() => {
     if (!isi.data) return
@@ -44,13 +63,14 @@ export function Pindah() {
   const simpan = useMutation({
     mutationFn: async () => {
       if (!tujuan) throw new Error("Pilih dus tujuan.")
-      if (mode === "semua") {
+      const sumber = isi.data ?? []
+      if (!awal && isiPenuh(sumber, pilihan)) {
         await pindahSemua(id, tujuan, catatan)
         return
       }
-      const item = (isi.data ?? [])
-        .filter((row) => pilihan[row.barang_id]?.pilih)
-        .map((row) => ({ barang_id: row.barang_id, jumlah: Number(pilihan[row.barang_id]?.jumlah), max: row.jumlah }))
+      const item = sumber
+        .filter((row) => (awal ? row.barang_id === awal : pilihan[row.barang_id]?.pilih))
+        .map((row) => ({ barang_id: row.barang_id, jumlah: Number(pilihan[row.barang_id]?.jumlah ?? row.jumlah), max: row.jumlah }))
       if (item.length === 0) throw new Error("Pilih barang yang akan dipindahkan.")
       for (const baris of item) {
         if (!Number.isInteger(baris.jumlah) || baris.jumlah < 1) throw new Error("Jumlah pindah harus bilangan lebih dari 0.")
@@ -65,7 +85,7 @@ export function Pindah() {
     },
     onSuccess: async () => {
       await qc.invalidateQueries()
-      toast(mode === "semua" ? "Seluruh isi dus dipindahkan." : "Barang dipindahkan.")
+      toast(!awal && isiPenuh(isi.data ?? [], pilihan) ? "Seluruh isi dus dipindahkan." : "Barang dipindahkan.")
       navigate(`/dus/${tujuan}`, { replace: true })
     },
     onError: (error) => toast(pesanError(error), "err"),
@@ -84,16 +104,41 @@ export function Pindah() {
   if (!asal) return <PageHeader title="Dus tidak ditemukan" back="/dus" />
 
   const baris = isi.data ?? []
+  const fokus = awal ? baris.find((row) => row.barang_id === awal) : undefined
+  const daftar = fokus ? [fokus] : baris
+  const semuaCentang = daftar.length > 0 && daftar.every((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih)
+  const sebagianCentang = daftar.some((row) => statusBaris(row, pilihan, Boolean(fokus)).pilih) && !semuaCentang
+  const pcsTerpilih = daftar.reduce((total, row) => {
+    if (!statusBaris(row, pilihan, Boolean(fokus)).pilih) return total
+    return total + jumlahBaris(row, pilihan, Boolean(fokus))
+  }, 0)
+  const seluruhIsi = !awal && isiPenuh(daftar, pilihan)
+
+  const aturSemua = (centang: boolean) => {
+    setPilihan((now) => {
+      const next = { ...now }
+      for (const row of daftar) {
+        const sebelumnya = now[row.barang_id] ?? { pilih: false, jumlah: String(row.jumlah) }
+        next[row.barang_id] = {
+          pilih: centang,
+          jumlah: centang ? String(row.jumlah) : sebelumnya.jumlah,
+        }
+      }
+      return next
+    })
+  }
 
   return (
     <div>
       <PageHeader
         kicker={asal.kode}
-        title="Pindahkan barang"
-        subtitle={asal.nama || asal.lokasi || "Dari dus ini ke dus lain."}
-        back={`/dus/${id}`}
+        title={fokus ? `Pindahkan ${fokus.barang.model}` : "Pindahkan barang"}
+        subtitle={fokus ? <>{labelJenis(fokus.barang.jenis)} · <LabelWarna nama={fokus.barang.warna} /></> : asal.nama || asal.lokasi || "Dari dus ini ke dus lain."}
+        back={awal ? `/barang/${awal}` : `/dus/${id}`}
       />
-      {baris.length === 0 ? (
+      {awal && !fokus ? (
+        <EmptyState title="Barang tidak ada di dus ini" body="Stok barang ini di dus asal sudah habis atau sudah dipindahkan." />
+      ) : baris.length === 0 ? (
         <EmptyState title="Dus asal kosong" body="Tidak ada barang yang bisa dipindahkan." />
       ) : calonTujuan.length === 0 ? (
         <EmptyState title="Perlu dus tujuan" body="Buat dus lain dulu, lalu pindahkan stok ke sana." />
@@ -105,44 +150,64 @@ export function Pindah() {
             simpan.mutate()
           }}
         >
-          <div className="grid grid-cols-2 gap-2">
-            <ModeTombol aktif={mode === "sebagian"} onClick={() => setMode("sebagian")}>Sebagian</ModeTombol>
-            <ModeTombol aktif={mode === "semua"} onClick={() => setMode("semua")}>Seluruh isi</ModeTombol>
-          </div>
-          {mode === "semua" ? (
-            <Card className="px-4 py-3 text-sm text-mist-300">
-              Semua barang di dus ini, total {formatAngka(asal.total_pcs)} pcs, akan dipindahkan. Kalau dus tujuan sudah menyimpan barang yang sama, jumlahnya ditambahkan.
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {baris.map((row) => {
-                const state = pilihan[row.barang_id] ?? { pilih: false, jumlah: String(row.jumlah) }
-                return (
-                  <label key={row.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-ink-800/80 px-3 py-3">
+          <div className="space-y-2">
+            {!fokus && daftar.length > 1 && (
+              <label className="flex min-h-11 items-center gap-3 rounded-2xl border border-white/10 bg-ink-800/80 px-3 py-3">
+                <KotakCentang checked={semuaCentang} indeterminate={sebagianCentang} onChange={aturSemua} />
+                <span className="min-w-0 flex-1 font-semibold">Pilih semua</span>
+                <span className="text-sm font-semibold tabular-nums text-mist-300">{formatAngka(pcsTerpilih)} pcs</span>
+              </label>
+            )}
+            {daftar.map((row) => {
+              const state = statusBaris(row, pilihan, Boolean(fokus))
+              const nilai = jumlahBaris(row, pilihan, Boolean(fokus))
+              const ubahJumlah = (berikutnya: number) => {
+                const terbatas = Math.min(row.jumlah, Math.max(1, berikutnya))
+                setPilihan((now) => {
+                  const current = now[row.barang_id] ?? { pilih: Boolean(fokus), jumlah: String(row.jumlah) }
+                  return { ...now, [row.barang_id]: { ...current, jumlah: String(terbatas) } }
+                })
+              }
+              return (
+                <div key={row.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-ink-800/80 px-3 py-3">
+                  {!fokus && (
                     <input
                       type="checkbox"
                       className="h-5 w-5 accent-amber-500"
                       checked={state.pilih}
-                      onChange={(event) => setPilihan((now) => ({ ...now, [row.barang_id]: { ...state, pilih: event.target.checked } }))}
+                      aria-label={`Pilih ${row.barang.model}, ${row.barang.warna}`}
+                      onChange={(event) => {
+                        const centang = event.target.checked
+                        setPilihan((now) => {
+                          const current = now[row.barang_id] ?? { pilih: Boolean(fokus), jumlah: String(row.jumlah) }
+                          return { ...now, [row.barang_id]: { ...current, pilih: centang } }
+                        })
+                      }}
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{row.barang.model}</span>
-                      <span className="block text-xs text-mist-500">
-                        {labelJenis(row.barang.jenis)} · {row.barang.warna} · stok {formatAngka(row.jumlah)}
-                      </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{row.barang.model}</span>
+                    <span className="block text-xs text-mist-500">
+                      {labelJenis(row.barang.jenis)} · <LabelWarna nama={row.barang.warna} /> · stok {formatAngka(row.jumlah)}
                     </span>
-                    <input
-                      className="field w-20 px-2 text-center"
-                      inputMode="numeric"
-                      disabled={!state.pilih}
-                      value={state.jumlah}
-                      aria-label={`Jumlah ${row.barang.model}`}
-                      onChange={(event) => setPilihan((now) => ({ ...now, [row.barang_id]: { ...state, jumlah: event.target.value } }))}
-                    />
-                  </label>
-                )
-              })}
-            </div>
+                  </span>
+                  <div className={state.pilih ? "flex items-center gap-1" : "flex items-center gap-1 opacity-40"}>
+                    <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Kurangi ${row.barang.model}`} disabled={!state.pilih} onClick={() => ubahJumlah(nilai - 1)}>
+                      <Minus size={16} />
+                    </button>
+                    <span className="w-10 text-center font-semibold tabular-nums">{formatAngka(nilai)}</span>
+                    <button type="button" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label={`Tambah ${row.barang.model}`} disabled={!state.pilih} onClick={() => ubahJumlah(nilai + 1)}>
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {seluruhIsi && (
+            <p className="text-sm text-mist-300">
+              Semua barang di dus ini, total {formatAngka(pcsTerpilih)} pcs, akan dipindahkan. Kalau dus tujuan sudah menyimpan barang yang sama, jumlahnya ditambahkan.
+            </p>
           )}
           <Field label="Dus tujuan">
             <select className="field" required value={tujuan} onChange={(event) => setTujuan(event.target.value)}>
@@ -157,10 +222,10 @@ export function Pindah() {
             </select>
           </Field>
           <Field label="Catatan" hint="Opsional. Misalnya pindah rak atau gabung dus.">
-            <input className="field" maxLength={200} value={catatan} onChange={(event) => setCatatan(event.target.value)} />
+            <input className="field" placeholder="Opsional" maxLength={200} value={catatan} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
           <Button type="submit" className="w-full" disabled={simpan.isPending}>
-            {simpan.isPending ? "Memindahkan..." : mode === "semua" ? "Pindahkan seluruh isi" : "Pindahkan yang dipilih"}
+            {simpan.isPending ? "Memindahkan..." : seluruhIsi ? "Pindahkan seluruh isi" : fokus ? "Pindahkan" : "Pindahkan yang dipilih"}
           </Button>
         </form>
       )}
@@ -168,10 +233,26 @@ export function Pindah() {
   )
 }
 
-function ModeTombol({ aktif, onClick, children }: { aktif: boolean; onClick: () => void; children: string }) {
+function KotakCentang({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean
+  indeterminate: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate
+  }, [indeterminate])
   return (
-    <button type="button" onClick={onClick} className={aktif ? "min-h-11 rounded-xl bg-amber-500 font-semibold text-ink-950" : "min-h-11 rounded-xl border border-white/10 font-semibold text-mist-300"}>
-      {children}
-    </button>
+    <input
+      ref={ref}
+      type="checkbox"
+      className="h-5 w-5 accent-amber-500"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+    />
   )
 }

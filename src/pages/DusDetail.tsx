@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { MapPin, Minus, Pencil, Plus } from "lucide-react"
+import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Button, Card, EmptyState, ErrorBox, Field, LinkButton, Loading, PageHeader, SearchField, Sheet, useConfirm, useToast } from "../components/ui"
 import { setJumlahIsi, tambahIsi } from "../lib/api"
@@ -70,7 +71,7 @@ export function DusDetail() {
       <PageHeader
         kicker={data.kode}
         title={data.nama || data.kode}
-        subtitle={`${formatAngka(data.total_pcs)} pcs · ${formatAngka(data.jumlah_jenis)} jenis`}
+        subtitle={`${formatAngka(data.total_pcs)} pcs · ${formatAngka(data.jumlah_jenis)} model`}
         back="/dus"
         action={
           <Link to={`/dus/${data.id}/edit`} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label="Ubah dus">
@@ -87,8 +88,8 @@ export function DusDetail() {
       </Card>
 
       <div className="mb-4 flex gap-2">
-        <Button variant="ghost" className="flex-1" onClick={() => setTambah(true)}>Tambah barang</Button>
-        <LinkButton to={`/dus/${data.id}/pindah`} variant="ghost" className="flex-1">Pindahkan</LinkButton>
+        <Button variant="ghost" className="flex-1 !text-amber-300" onClick={() => setTambah(true)}><Plus size={18} /> Barang</Button>
+        <LinkButton to={`/dus/${data.id}/pindah`} variant="ghost" className="flex-1 !text-amber-300">Pindahkan</LinkButton>
       </div>
 
       {baris.length === 0 ? (
@@ -105,7 +106,7 @@ export function DusDetail() {
                     <span className="truncate text-xs text-mist-500">{row.barang.kode}</span>
                   </span>
                   <span className="mt-1 block truncate font-semibold">{row.barang.model}</span>
-                  <span className="block text-sm text-mist-500">{row.barang.warna}</span>
+                  <LabelWarna nama={row.barang.warna} className="block text-sm text-mist-500" />
                   {jumlah === 0 && <span className="mt-1 block text-xs text-clay-400">Akan dikeluarkan saat disimpan</span>}
                 </Link>
                 <div className="flex items-center gap-1">
@@ -124,9 +125,17 @@ export function DusDetail() {
       )}
 
       {kotor && (
-        <div className="sticky bottom-32 z-20 mt-4 md:bottom-4">
+        <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 mt-4 flex gap-2 md:bottom-4">
           <Button
-            className="w-full"
+            variant="ghost"
+            className="min-w-0 flex-1"
+            disabled={simpan.isPending}
+            onClick={() => setDraft(Object.fromEntries(baris.map((row) => [row.barang_id, row.jumlah])))}
+          >
+            Batal
+          </Button>
+          <Button
+            className="min-w-0 flex-1"
             disabled={simpan.isPending}
             onClick={async () => {
               const adaYangKeluar = baris.some((row) => (draft?.[row.barang_id] ?? row.jumlah) === 0 && row.jumlah !== 0)
@@ -220,7 +229,7 @@ function TambahKeDus({
             simpan.mutate()
           }}
         >
-          <SearchField value={cari} onChange={setCari} placeholder="Cari barang" />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
           <div className="max-h-56 space-y-1 overflow-auto">
             {memuat && <Loading />}
             {daftar.map((item) => (
@@ -230,7 +239,7 @@ function TambahKeDus({
                 onClick={() => setDipilih(item.id)}
                 className={dipilih === item.id ? "block w-full rounded-xl bg-amber-500/15 px-3 py-2 text-left" : "block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5"}
               >
-                <span className="block font-medium">{item.model} · {item.warna}</span>
+                <span className="block font-medium">{item.model} · <LabelWarna nama={item.warna} /></span>
                 <span className="block text-xs text-mist-500">{labelJenis(item.jenis)} · {item.kode}</span>
               </button>
             ))}
@@ -240,7 +249,7 @@ function TambahKeDus({
             <input className="field" inputMode="numeric" value={jumlah} onChange={(event) => setJumlah(event.target.value)} />
           </Field>
           <Field label="Catatan" hint="Opsional. Muncul di riwayat.">
-            <input className="field" value={catatan} maxLength={200} onChange={(event) => setCatatan(event.target.value)} />
+            <input className="field" placeholder="Opsional" value={catatan} maxLength={200} onChange={(event) => setCatatan(event.target.value)} />
           </Field>
           {galat && <p className="text-sm text-clay-400">{galat}</p>}
           <Button type="submit" className="w-full" disabled={simpan.isPending}>

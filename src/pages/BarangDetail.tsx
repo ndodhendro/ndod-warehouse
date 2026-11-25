@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom"
 import { ChevronRight, Pencil } from "lucide-react"
+import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader } from "../components/ui"
 import { formatAngka, labelJenis } from "../lib/format"
@@ -31,7 +32,7 @@ export function BarangDetail() {
       <PageHeader
         kicker={data.kode}
         title={data.model}
-        subtitle={`${labelJenis(data.jenis)} · ${data.warna}`}
+        subtitle={<>{labelJenis(data.jenis)} · <LabelWarna nama={data.warna} /></>}
         back="/barang"
         action={
           <Link to={`/barang/${data.id}/edit`} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10" aria-label="Ubah barang">
@@ -73,7 +74,7 @@ export function BarangDetail() {
               </Link>
               <span className="font-semibold tabular-nums">{formatAngka(item.jumlah)} pcs</span>
               <Link to={`/dus/${item.dus.id}/pindah?barang=${data.id}`} className="text-sm font-semibold text-amber-300">
-                Pindah
+                Pindahkan
               </Link>
               <ChevronRight size={16} className="text-mist-500" />
             </div>

@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { LabelWarna } from "../components/LabelWarna"
 import { SetupCard } from "../components/SetupCard"
 import { Card, EmptyState, ErrorBox, Loading, PageHeader } from "../components/ui"
-import { formatAngka, formatWaktu, labelBarang } from "../lib/format"
+import { formatAngka, formatWaktu, labelJenis } from "../lib/format"
+import { warnaTeks } from "../lib/warna"
 import { useRiwayat } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
 import type { JenisRiwayat, RiwayatItem } from "../types"
@@ -12,6 +14,21 @@ const label: Record<JenisRiwayat, string> = {
   keluar: "Keluar",
   pindah: "Pindah",
   koreksi: "Koreksi",
+}
+
+const warna: Record<JenisRiwayat, string> = {
+  masuk: "text-teal-300",
+  keluar: "text-amber-300",
+  pindah: "text-lilac-300",
+  koreksi: "text-blue-300",
+}
+
+function kelasSaring(id: "semua" | JenisRiwayat, aktif: boolean) {
+  const dasar = "shrink-0 rounded-full px-3 py-1.5 text-sm"
+  if (id === "semua") {
+    return aktif ? `${dasar} bg-amber-500 font-semibold text-ink-950` : `${dasar} bg-white/5 text-mist-300`
+  }
+  return aktif ? `${dasar} bg-white/10 font-semibold ${warna[id]}` : `${dasar} bg-white/5 ${warna[id]}`
 }
 
 const saringan: Array<{ id: "semua" | JenisRiwayat; label: string }> = [
@@ -47,7 +64,7 @@ export function RiwayatPage() {
                 key={item.id}
                 type="button"
                 onClick={() => setSaring(item.id)}
-                className={saring === item.id ? "shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-ink-950" : "shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-sm text-mist-300"}
+                className={kelasSaring(item.id, saring === item.id)}
               >
                 {item.label}
               </button>
@@ -69,7 +86,6 @@ export function RiwayatPage() {
 }
 
 export function KartuRiwayat({ item }: { item: RiwayatItem }) {
-  const nama = item.barang ? labelBarang(item.barang) : item.barang_label || item.barang_kode || "Barang"
   const asal = item.asal?.kode ?? item.dus_asal_kode
   const tujuan = item.tujuan?.kode ?? item.dus_tujuan_kode
   const jumlah = item.jenis === "koreksi" ? `${item.jumlah > 0 ? "+" : ""}${formatAngka(item.jumlah)} pcs` : `${formatAngka(item.jumlah)} pcs`
@@ -78,8 +94,10 @@ export function KartuRiwayat({ item }: { item: RiwayatItem }) {
     <Card className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">{label[item.jenis]}</p>
-          <p className="mt-1 truncate font-semibold">{nama}</p>
+          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${warna[item.jenis]}`}>{label[item.jenis]}</p>
+          <p className="mt-1 truncate font-semibold">
+            <NamaRiwayat item={item} />
+          </p>
           <p className="mt-1 text-sm text-mist-300">{kalimatLokasi(item.jenis, asal, tujuan)}</p>
           {item.keterangan && <p className="mt-1 text-sm text-mist-500">{item.keterangan}</p>}
         </div>
@@ -96,6 +114,26 @@ export function KartuRiwayat({ item }: { item: RiwayatItem }) {
         </div>
       )}
     </Card>
+  )
+}
+
+function NamaRiwayat({ item }: { item: RiwayatItem }) {
+  if (item.barang) {
+    return (
+      <>
+        {labelJenis(item.barang.jenis)} · {item.barang.model} · <LabelWarna nama={item.barang.warna} />
+      </>
+    )
+  }
+  const teks = item.barang_label || item.barang_kode || "Barang"
+  const potong = teks.lastIndexOf(" · ")
+  const nama = potong === -1 ? "" : teks.slice(potong + 3)
+  if (!nama || !warnaTeks(nama)) return teks
+  return (
+    <>
+      {teks.slice(0, potong + 3)}
+      <LabelWarna nama={nama} />
+    </>
   )
 }
 

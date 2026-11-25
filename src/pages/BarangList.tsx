@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
-import { useMutation } from "@tanstack/react-query"
-import { ChevronRight, Download, Plus } from "lucide-react"
+import { ChevronRight, Plus } from "lucide-react"
+import { LabelWarna } from "../components/LabelWarna"
+import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
-import { Badge, Button, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader, SearchField, useToast } from "../components/ui"
-import { ambilSebaranEkspor } from "../lib/api"
-import { pesanError } from "../lib/errors"
-import { formatAngka, labelJenis, unduhCsv } from "../lib/format"
+import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
+import { formatAngka, labelJenis } from "../lib/format"
 import { useBarangList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
 import type { JenisBarang } from "../types"
@@ -16,7 +15,6 @@ type Saring = "semua" | JenisBarang
 export function BarangList() {
   const siap = supabaseConfigured()
   const query = useBarangList()
-  const toast = useToast()
   const [cari, setCari] = useState("")
   const [saring, setSaring] = useState<Saring>("semua")
   const kata = cari.trim().toLowerCase()
@@ -28,21 +26,6 @@ export function BarangList() {
       return [item.kode, item.model, item.warna, item.catatan, labelJenis(item.jenis)].some((nilai) => nilai?.toLowerCase().includes(kata))
     })
   }, [query.data, kata, saring])
-
-  const ekspor = useMutation({
-    mutationFn: ambilSebaranEkspor,
-    onSuccess: (baris) => {
-      if (baris.length === 0) {
-        toast("Belum ada stok untuk diunduh.", "err")
-        return
-      }
-      unduhCsv(`stok-gudang-${new Date().toISOString().slice(0, 10)}.csv`, [
-        ["Kode dus", "Lokasi dus", "Kode barang", "Jenis", "Model", "Warna", "Jumlah"],
-        ...baris.map((item) => [item.dus_kode, item.dus_lokasi, item.barang_kode, item.jenis, item.model, item.warna, String(item.jumlah)]),
-      ])
-    },
-    onError: (error) => toast(pesanError(error), "err"),
-  })
 
   return (
     <div>
@@ -59,16 +42,13 @@ export function BarangList() {
         <ErrorBox error={query.error} />
       ) : (
         <>
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna" />
+          <RingkasanStok />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, model, atau warna barang" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
             <Chip aktif={saring === "tas"} onClick={() => setSaring("tas")}>Tas</Chip>
             <Chip aktif={saring === "botol"} onClick={() => setSaring("botol")}>Botol minum</Chip>
             <Chip aktif={saring === "kotak"} onClick={() => setSaring("kotak")}>Kotak makan</Chip>
-            <Button variant="quiet" className="ml-auto min-h-9 px-3" disabled={ekspor.isPending} onClick={() => ekspor.mutate()}>
-              <Download size={16} />
-              CSV
-            </Button>
           </div>
           {query.data?.length === 0 ? (
             <div className="mt-4">
@@ -86,7 +66,7 @@ export function BarangList() {
                       <span className="text-xs text-mist-500">{item.kode}</span>
                     </span>
                     <span className="mt-1 block truncate font-semibold">{item.model}</span>
-                    <span className="block text-sm text-mist-500">{item.warna}</span>
+                    <LabelWarna nama={item.warna} className="block text-sm text-mist-500" />
                   </span>
                   <span className="text-right">
                     <span className="block font-semibold tabular-nums">{formatAngka(item.total_pcs)} pcs</span>

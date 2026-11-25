@@ -277,24 +277,6 @@ export async function listRiwayat() {
   })
 }
 
-export async function cariKode(kode: string) {
-  const normal = normKode(kode)
-  if (!normal) return { dus: null as Dus | null, barang: [] as Barang[] }
-  const [dusRes, barangRes] = await Promise.all([
-    db().from("v_dus_ringkas").select("*").eq("kode", normal).maybeSingle(),
-    db().from("v_barang_ringkas").select("*").eq("kode", normal),
-  ])
-  if (dusRes.error) throw dusRes.error
-  if (barangRes.error) throw barangRes.error
-  const barang = ((barangRes.data ?? []) as Row[])
-    .map(mapBarang)
-    .sort((a, b) => a.warna.localeCompare(b.warna, "id", { sensitivity: "base" }) || bandingKode(a.model, b.model))
-  return {
-    dus: dusRes.data ? mapDus(dusRes.data as Row) : null,
-    barang,
-  }
-}
-
 export async function ambilSebaranEkspor() {
   const { data, error } = await db()
     .from("isi_dus")

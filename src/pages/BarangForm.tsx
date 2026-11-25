@@ -6,6 +6,7 @@ import { hapusBarang, simpanBarang } from "../lib/api"
 import { pesanError } from "../lib/errors"
 import { useBarang, useBarangList } from "../lib/queries"
 import { supabaseConfigured } from "../lib/supabase"
+import { warnaTeks } from "../lib/warna"
 import type { BarangInput } from "../types"
 
 const awal: BarangInput = { kode: "", jenis: "tas", model: "", warna: "", catatan: "" }
@@ -34,6 +35,7 @@ export function BarangForm() {
 
   const modelSaran = [...new Set((katalog.data ?? []).map((item) => item.model))]
   const warnaSaran = [...new Set((katalog.data ?? []).map((item) => item.warna))]
+  const warnaField = warnaTeks(form.warna)
 
   const simpan = useMutation({
     mutationFn: () => simpanBarang(id ?? null, form),
@@ -93,13 +95,21 @@ export function BarangForm() {
           </datalist>
         </Field>
         <Field label="Warna">
-          <input className="field" required maxLength={40} list="saran-warna" value={form.warna} onChange={(event) => setForm({ ...form, warna: event.target.value })} />
+          <input
+            className="field"
+            required
+            maxLength={40}
+            list="saran-warna"
+            value={form.warna}
+            style={warnaField ? { color: warnaField } : undefined}
+            onChange={(event) => setForm({ ...form, warna: event.target.value })}
+          />
           <datalist id="saran-warna">
             {warnaSaran.map((warna) => <option key={warna} value={warna} />)}
           </datalist>
         </Field>
         <Field label="Catatan">
-          <textarea className="field min-h-24" maxLength={500} value={form.catatan} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
+          <textarea className="field min-h-24" placeholder="Opsional" maxLength={500} value={form.catatan} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
         </Field>
         <Button type="submit" className="w-full" disabled={simpan.isPending}>
           {simpan.isPending ? "Menyimpan..." : "Simpan"}

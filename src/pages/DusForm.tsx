@@ -92,7 +92,7 @@ export function DusForm() {
           <input className="field" value={form.lokasi} maxLength={120} onChange={(event) => setForm({ ...form, lokasi: event.target.value })} />
         </Field>
         <Field label="Catatan">
-          <textarea className="field min-h-24" value={form.catatan} maxLength={500} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
+          <textarea className="field min-h-24" placeholder="Opsional" value={form.catatan} maxLength={500} onChange={(event) => setForm({ ...form, catatan: event.target.value })} />
         </Field>
         <Button type="submit" disabled={simpan.isPending} className="w-full">
           {simpan.isPending ? "Menyimpan..." : "Simpan"}

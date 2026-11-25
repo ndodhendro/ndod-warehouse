@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
 import { ChevronRight, MapPin, Plus } from "lucide-react"
+import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
 import { formatAngka } from "../lib/format"
@@ -40,7 +41,8 @@ export function DusList() {
         <ErrorBox error={query.error} />
       ) : (
         <>
-          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, nama, atau lokasi" />
+          <RingkasanStok />
+          <SearchField value={cari} onChange={setCari} placeholder="Cari kode, nama, atau lokasi dus" />
           <div className="mt-3 flex gap-2">
             <Chip aktif={saring === "semua"} onClick={() => setSaring("semua")}>Semua</Chip>
             <Chip aktif={saring === "berisi"} onClick={() => setSaring("berisi")}>Berisi</Chip>
@@ -67,8 +69,8 @@ export function DusList() {
                     </span>
                   </span>
                   <span className="text-right">
-                    <Badge tone={item.total_pcs > 0 ? "ok" : "neutral"}>{formatAngka(item.total_pcs)} pcs</Badge>
-                    <span className="mt-1 block text-xs text-mist-500">{formatAngka(item.jumlah_jenis)} jenis</span>
+                    <Badge tone={item.jumlah_jenis > 0 ? "ok" : "neutral"}>{formatAngka(item.jumlah_jenis)} model</Badge>
+                    <span className="mt-1 block text-xs text-mist-500">{formatAngka(item.total_pcs)} pcs</span>
                   </span>
                   <ChevronRight size={18} className="text-mist-500" />
                 </Link>

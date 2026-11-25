@@ -11,7 +11,6 @@ Satu barang adalah satu kombinasi **jenis + model + warna**. Barang yang sama bo
 - Tailwind CSS
 - Supabase Postgres
 - Service worker lewat vite-plugin-pwa, supaya bisa dipasang di Android dan iOS
-- ZXing untuk memindai kode lewat kamera
 
 Stok tidak diubah langsung dari browser. Tambah, koreksi, dan pindah barang lewat fungsi SQL dalam satu transaksi, lalu dicatat di riwayat.
 
