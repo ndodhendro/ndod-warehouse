@@ -50,7 +50,10 @@ export function HalamanProfil() {
           {sibuk ? "Keluar..." : "Keluar"}
         </Button>
       </Card>
-      <p className="mt-auto pt-8 text-center text-xs tabular-nums text-mist-500">Versi {__APP_VERSION__}</p>
+      <div className="mt-auto flex flex-col items-center gap-1 pt-8 text-center text-xs text-mist-500">
+        <p>Made by Ndod</p>
+        <p className="tabular-nums">v{__APP_VERSION__}</p>
+      </div>
     </div>
   )
 }
