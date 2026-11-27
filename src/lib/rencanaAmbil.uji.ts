@@ -1,7 +1,7 @@
 import { rencanaAmbil, type LetakDus, type StokDus } from "./rencanaAmbil"
 
 function letakAtas(kode: string[]): LetakDus[] {
-  return kode.map((item, indeks) => ({ dusId: item, kode: item, kolom: indeks + 1, tingkat: 1 }))
+  return kode.map((item, indeks) => ({ dusId: item, kode: item, baris: 1, kolom: indeks + 1, tingkat: 1 }))
 }
 
 function stok(baris: [string, string, number][]): StokDus[] {
@@ -51,11 +51,11 @@ sama(
 )
 
 const bertingkat: LetakDus[] = [
-  { dusId: "D01", kode: "D01", kolom: 1, tingkat: 1 },
-  { dusId: "D02", kode: "D02", kolom: 1, tingkat: 2 },
-  { dusId: "D03", kode: "D03", kolom: 1, tingkat: 3 },
-  { dusId: "D06", kode: "D06", kolom: 2, tingkat: 3 },
-  { dusId: "D09", kode: "D09", kolom: 3, tingkat: 3 },
+  { dusId: "D01", kode: "D01", baris: 1, kolom: 1, tingkat: 1 },
+  { dusId: "D02", kode: "D02", baris: 1, kolom: 1, tingkat: 2 },
+  { dusId: "D03", kode: "D03", baris: 1, kolom: 1, tingkat: 3 },
+  { dusId: "D06", kode: "D06", baris: 1, kolom: 2, tingkat: 3 },
+  { dusId: "D09", kode: "D09", baris: 1, kolom: 3, tingkat: 3 },
 ]
 sama(
   "tujuh dari puncak",
@@ -71,10 +71,40 @@ sama(
   "kurang lalu sampel",
   ringkas(rencanaAmbil(
     [{ barangId: "mint", jumlah: 5 }],
-    [{ dusId: "D15", kode: "D15", kolom: 1, tingkat: 1 }, { dusId: "S0", kode: "S0", kolom: null, tingkat: null }],
+    [{ dusId: "D15", kode: "D15", baris: 1, kolom: 1, tingkat: 1 }, { dusId: "S0", kode: "S0", baris: null, kolom: null, tingkat: null }],
     stok([["D15", "mint", 2], ["S0", "mint", 1]]),
   )),
   { baris: ["D15:mint:2", "S0:mint:1"], kurang: ["mint:2"] },
+)
+
+const tertutup: LetakDus[] = [
+  { dusId: "D01", kode: "D01", baris: 1, kolom: 1, tingkat: 1 },
+  { dusId: "D02", kode: "D02", baris: 1, kolom: 1, tingkat: 2 },
+  { dusId: "D03", kode: "D03", baris: 2, kolom: 1, tingkat: 2 },
+]
+sama(
+  "belakang tertutup depan",
+  ringkas(rencanaAmbil(
+    [{ barangId: "mint", jumlah: 4 }],
+    tertutup,
+    stok([["D02", "mint", 2], ["D01", "mint", 2], ["D03", "mint", 4]]),
+  )),
+  { baris: ["D01:mint:2", "D02:mint:2"], kurang: [] },
+)
+
+const menjulang: LetakDus[] = [
+  { dusId: "D01", kode: "D01", baris: 1, kolom: 1, tingkat: 1 },
+  { dusId: "D03", kode: "D03", baris: 2, kolom: 1, tingkat: 1 },
+  { dusId: "D04", kode: "D04", baris: 2, kolom: 1, tingkat: 2 },
+]
+sama(
+  "puncak belakang yang tidak tertutup",
+  ringkas(rencanaAmbil(
+    [{ barangId: "mint", jumlah: 5 }],
+    menjulang,
+    stok([["D01", "mint", 3], ["D03", "mint", 5], ["D04", "mint", 5]]),
+  )),
+  { baris: ["D04:mint:5"], kurang: [] },
 )
 
 console.log("rencana ambil lulus")

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
-import { Box, ChevronRight, MapPin, Plus } from "lucide-react"
+import { Box, ChevronRight, Layers, MapPin, Plus } from "lucide-react"
 import { RingkasanStok } from "../components/RingkasanStok"
 import { SetupCard } from "../components/SetupCard"
 import { Badge, Card, EmptyState, ErrorBox, kelasAreaMuat, LinkButton, Loading, PageHeader, SearchField } from "../components/ui"
@@ -34,7 +34,7 @@ export function DusList() {
         subtitle=""
         action={
           <div className="flex gap-2">
-            <LinkButton to="/dus/susunan" variant="ghost" className="px-3">Susunan</LinkButton>
+            <LinkButton to="/dus/susunan" className="px-3"><Layers size={18} /> Susunan</LinkButton>
             <LinkButton to="/dus/baru" className="px-3"><Plus size={18} /> Dus</LinkButton>
           </div>
         }

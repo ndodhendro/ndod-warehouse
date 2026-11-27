@@ -120,12 +120,13 @@ export function PageHeader({
   )
 }
 
-export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function Stat({ label, value, hint, extra }: { label: string; value: string; hint?: string; extra?: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-ink-800/80 px-4 py-3 shadow-card">
       <p className="text-xs text-mist-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
       {hint && <p className="mt-1 text-xs text-mist-500">{hint}</p>}
+      {extra && <p className="text-xs text-mist-300">{extra}</p>}
     </div>
   )
 }

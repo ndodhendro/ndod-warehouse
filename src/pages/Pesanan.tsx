@@ -1,19 +1,34 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ClipboardList, X } from "lucide-react"
+import { ClipboardList, Trash2 } from "lucide-react"
+import { BalokRencana, type BarisIsi } from "../components/BalokRencana"
+import { FotoBarang } from "../components/FotoBarang"
+import { LabelWarna } from "../components/LabelWarna"
 import { PengaturJumlah } from "../components/PengaturJumlah"
+import { PilihBarang } from "../components/PilihBarang"
 import { SetupCard } from "../components/SetupCard"
-import { Button, Card, ErrorBox, Loading, PageHeader, SearchField, useConfirm, useToast } from "../components/ui"
+import { Badge, Button, Card, ErrorBox, Loading, PageHeader, useConfirm, useToast } from "../components/ui"
 import { keluarkanPesanan } from "../lib/api"
 import { pesanError } from "../lib/errors"
-import { cocokKata, formatAngka, labelBarang, labelJenis } from "../lib/format"
+import { formatAngka, labelBarang, labelJenis } from "../lib/format"
 import { useBarangList, useDusList, useStokDus, useSusunan } from "../lib/queries"
 import { rencanaAmbil, type LetakDus } from "../lib/rencanaAmbil"
 import { supabaseConfigured } from "../lib/supabase"
-import type { Barang } from "../types"
 
 type Baris = { barangId: string; jumlah: number }
+
+function keGrid(data: { baris: number; urutan: number; dusId: string[] }[]) {
+  if (data.length === 0) return []
+  const panjang = Math.max(...data.map((item) => item.baris))
+  const lebar = Math.max(...data.map((item) => item.urutan))
+  const grid = Array.from({ length: panjang }, () => Array.from({ length: lebar }, () => [] as string[]))
+  for (const item of data) {
+    const baris = grid[item.baris - 1]
+    if (baris) baris[item.urutan - 1] = item.dusId
+  }
+  return grid
+}
 
 export function Pesanan() {
   const siap = supabaseConfigured()
@@ -24,7 +39,6 @@ export function Pesanan() {
   const toast = useToast()
   const confirm = useConfirm()
   const qc = useQueryClient()
-  const [cari, setCari] = useState("")
   const [baris, setBaris] = useState<Baris[]>([])
 
   const petaBarang = useMemo(() => new Map((barang.data ?? []).map((item) => [item.id, item])), [barang.data])
@@ -32,15 +46,15 @@ export function Pesanan() {
   const letak = useMemo<LetakDus[]>(() => {
     const hasil: LetakDus[] = []
     const ada = new Set<string>()
-    for (const [indeks, kolom] of (susunan.data ?? []).entries()) {
+    for (const kolom of susunan.data ?? []) {
       kolom.dusId.forEach((dusId, tingkat) => {
-        hasil.push({ dusId, kode: kodeDus.get(dusId) ?? dusId, kolom: indeks + 1, tingkat: tingkat + 1 })
+        hasil.push({ dusId, kode: kodeDus.get(dusId) ?? dusId, baris: kolom.baris, kolom: kolom.urutan, tingkat: tingkat + 1 })
         ada.add(dusId)
       })
     }
     for (const item of stok.data ?? []) {
       if (ada.has(item.dusId)) continue
-      hasil.push({ dusId: item.dusId, kode: item.kode, kolom: null, tingkat: null })
+      hasil.push({ dusId: item.dusId, kode: item.kode, baris: null, kolom: null, tingkat: null })
       ada.add(item.dusId)
     }
     return hasil
@@ -50,11 +64,28 @@ export function Pesanan() {
     () => rencanaAmbil(baris, letak, stok.data ?? []),
     [baris, letak, stok.data],
   )
-
-  const tampil = useMemo(
-    () => (barang.data ?? []).filter((item) => cocokKata(cari, [item.kode, item.model, item.warna, labelJenis(item.jenis)])).slice(0, 8),
-    [barang.data, cari],
-  )
+  const grid = useMemo(() => keGrid(susunan.data ?? []), [susunan.data])
+  const idSusunan = useMemo(() => new Set(grid.flat(2)), [grid])
+  const sorot = useMemo(() => {
+    const hasil = new Set<string>()
+    for (const item of rencana.baris) {
+      if (idSusunan.has(item.dusId)) hasil.add(item.dusId)
+    }
+    return hasil
+  }, [rencana.baris, idSusunan])
+  const diLuar = rencana.baris.filter((item) => !idSusunan.has(item.dusId))
+  const isiSorot = useMemo(() => {
+    const peta = new Map<string, BarisIsi[]>()
+    for (const item of rencana.baris) {
+      if (!idSusunan.has(item.dusId)) continue
+      const data = petaBarang.get(item.barangId)
+      if (!data) continue
+      const daftar = peta.get(item.dusId) ?? []
+      daftar.push({ jenis: labelJenis(data.jenis), model: data.model, warna: data.warna, jumlah: `${formatAngka(item.jumlah)} pcs` })
+      peta.set(item.dusId, daftar)
+    }
+    return peta
+  }, [rencana.baris, idSusunan, petaBarang])
 
   const kurang = rencana.kurang.flatMap((item) => {
     const data = petaBarang.get(item.barangId)
@@ -71,11 +102,12 @@ export function Pesanan() {
     onError: (error) => toast(pesanError(error), "err"),
   })
 
-  function tambah(item: Barang) {
+  function tambah(id: string | null) {
+    if (!id) return
     setBaris((sekarang) => {
-      const ada = sekarang.find((barisItem) => barisItem.barangId === item.id)
-      if (!ada) return [...sekarang, { barangId: item.id, jumlah: 1 }]
-      return sekarang.map((barisItem) => (barisItem.barangId === item.id ? { ...barisItem, jumlah: barisItem.jumlah + 1 } : barisItem))
+      const ada = sekarang.find((barisItem) => barisItem.barangId === id)
+      if (!ada) return [...sekarang, { barangId: id, jumlah: 1 }]
+      return sekarang.map((barisItem) => (barisItem.barangId === id ? { ...barisItem, jumlah: barisItem.jumlah + 1 } : barisItem))
     })
   }
 
@@ -96,7 +128,7 @@ export function Pesanan() {
   const susunanKosong = (susunan.data ?? []).every((item) => item.dusId.length === 0)
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeader icon={ClipboardList} title="Pesanan" subtitle="" />
       {!siap ? (
         <SetupCard />
@@ -106,18 +138,7 @@ export function Pesanan() {
         <ErrorBox error={galat} />
       ) : (
         <>
-          <SearchField value={cari} onChange={setCari} placeholder="Cari model atau warna" />
-          {cari.trim() && tampil.length === 0 && <p className="mt-3 text-sm text-mist-500">Tidak ada barang yang cocok.</p>}
-          {cari.trim() && tampil.length > 0 && (
-            <Card className="mt-2 divide-y divide-white/5">
-              {tampil.map((item) => (
-                <button key={item.id} type="button" className="block w-full px-4 py-3 text-left" onClick={() => tambah(item)}>
-                  <span className="block font-semibold">{item.model}</span>
-                  <span className="text-sm text-mist-500">{labelJenis(item.jenis)} · {item.warna}</span>
-                </button>
-              ))}
-            </Card>
-          )}
+          <PilihBarang katalog={barang.data ?? []} memuat={barang.isLoading} dipilih={null} onPilih={tambah} maksTampil={5} />
           {baris.length > 0 && (
             <Card className="mt-4 divide-y divide-white/5">
               {baris.map((item) => {
@@ -125,13 +146,15 @@ export function Pesanan() {
                 if (!data) return null
                 return (
                   <div key={item.barangId} className="flex items-center gap-3 px-4 py-3">
+                    <FotoBarang kecil={data.foto_kecil_url} penuh={data.foto_url} nama={data.model} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{data.model}</span>
-                      <span className="text-sm text-mist-500">{data.warna}</span>
+                      <Badge tone={data.jenis}>{labelJenis(data.jenis)}</Badge>
+                      <span className="mt-1 block truncate font-semibold">{data.model}</span>
+                      <LabelWarna nama={data.warna} className="block text-sm text-mist-500" />
                     </span>
                     <PengaturJumlah nilai={item.jumlah} min={1} max={100000} onUbah={(jumlah) => setBaris((sekarang) => sekarang.map((barisItem) => (barisItem.barangId === item.barangId ? { ...barisItem, jumlah } : barisItem)))} label={data.model} />
-                    <button type="button" className="grid h-11 w-11 place-items-center text-mist-500" aria-label={`Hapus ${data.model}`} onClick={() => setBaris((sekarang) => sekarang.filter((barisItem) => barisItem.barangId !== item.barangId))}>
-                      <X size={18} />
+                    <button type="button" className="grid h-11 w-11 place-items-center text-amber-400" aria-label={`Hapus ${data.model}`} onClick={() => setBaris((sekarang) => sekarang.filter((barisItem) => barisItem.barangId !== item.barangId))}>
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )
@@ -144,18 +167,29 @@ export function Pesanan() {
               <Link to="/dus/susunan" className="text-amber-300">Isi susunan</Link>
             </p>
           )}
-          {rencana.baris.length > 0 && (
-            <Card className="mt-4 divide-y divide-white/5">
-              {rencana.baris.map((item) => {
-                const data = petaBarang.get(item.barangId)
-                return (
-                  <div key={`${item.dusId}-${item.barangId}`} className="px-4 py-3">
-                    <span className="block font-semibold">{item.kode}</span>
-                    <span className="text-sm text-mist-500">{data ? labelBarang(data) : "Barang"} · {formatAngka(item.jumlah)} pcs</span>
-                  </div>
-                )
-              })}
-            </Card>
+          {sorot.size > 0 && (
+            <div className="mt-4 max-w-full overflow-x-auto rounded-2xl border border-white/10 bg-ink-900/80 py-4">
+              <div className="flex w-max min-w-full justify-center px-3">
+                <BalokRencana grid={grid} kode={kodeDus} sorot={sorot} isi={isiSorot} />
+              </div>
+              <p className="px-3 text-center text-xs text-mist-500">Oranye = dus yang dibuka. Ketuk dus oranye untuk melihat barang yang dikeluarkan. Geser untuk memutar. Ketuk area kosong agar dus lain transparan.</p>
+            </div>
+          )}
+          {diLuar.length > 0 && (
+            <>
+              {sorot.size > 0 && <p className="mt-4 text-sm text-mist-500">Dus ini tidak ada di susunan.</p>}
+              <Card className={sorot.size > 0 ? "mt-2 divide-y divide-white/5" : "mt-4 divide-y divide-white/5"}>
+                {diLuar.map((item) => {
+                  const data = petaBarang.get(item.barangId)
+                  return (
+                    <div key={`${item.dusId}-${item.barangId}`} className="px-4 py-3">
+                      <span className="block font-semibold">{item.kode}</span>
+                      <span className="text-sm text-mist-500">{data ? labelBarang(data) : "Barang"} · {formatAngka(item.jumlah)} pcs</span>
+                    </div>
+                  )
+                })}
+              </Card>
+            </>
           )}
           {kurang.length > 0 && (
             <div className="mt-4 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-4 py-3">

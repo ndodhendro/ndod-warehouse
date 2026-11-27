@@ -376,6 +376,7 @@ export async function ambilSebaranEkspor() {
 
 export type KolomSusunan = {
   id: string
+  baris: number
   urutan: number
   dusId: string[]
 }
@@ -388,7 +389,7 @@ export type StokDusBaris = {
 }
 
 export async function listSusunan() {
-  const { data, error } = await db().from("susunan_kolom").select("id, urutan, susunan_dus(dus_id, tingkat)").order("urutan")
+  const { data, error } = await db().from("susunan_kolom").select("id, baris, urutan, susunan_dus(dus_id, tingkat)").order("baris").order("urutan")
   if (error) throw error
   return ((data ?? []) as Row[]).map((row) => {
     const isi = ((row.susunan_dus ?? []) as Row[])
@@ -396,14 +397,15 @@ export async function listSusunan() {
       .sort((a, b) => a.tingkat - b.tingkat)
     return {
       id: String(row.id),
+      baris: angka(row.baris) || 1,
       urutan: angka(row.urutan),
       dusId: isi.map((item) => item.dusId),
     } satisfies KolomSusunan
   })
 }
 
-export async function simpanSusunan(kolom: string[][]) {
-  const { error } = await db().rpc("simpan_susunan", { p_kolom: kolom })
+export async function simpanSusunan(susunan: string[][][]) {
+  const { error } = await db().rpc("simpan_susunan", { p_kolom: susunan })
   if (error) throw error
 }
 

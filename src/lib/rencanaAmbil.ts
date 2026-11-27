@@ -3,6 +3,7 @@ import { bandingKode } from "./format"
 export type LetakDus = {
   dusId: string
   kode: string
+  baris: number | null
   kolom: number | null
   tingkat: number | null
 }
@@ -49,10 +50,11 @@ function golongan(kode: string) {
 }
 
 function kedalaman(letak: LetakDus, semua: LetakDus[]) {
-  const kolom = letak.kolom
-  const tingkat = letak.tingkat
-  if (kolom === null || tingkat === null) return null
-  return semua.filter((item) => item.kolom === kolom && item.tingkat !== null && item.tingkat > tingkat).length
+  const { kolom, tingkat, baris } = letak
+  if (kolom === null || tingkat === null || baris === null) return null
+  const diAtas = semua.filter((item) => item.kolom === kolom && item.baris === baris && item.tingkat !== null && item.tingkat > tingkat).length
+  const diDepan = semua.filter((item) => item.kolom === kolom && item.baris !== null && item.baris < baris && item.tingkat !== null && item.tingkat >= tingkat).length
+  return diAtas + diDepan
 }
 
 function alokasi(sumber: { dusId: string; kode: string; jumlah: number }[], target: number): Opsi[] {
@@ -227,7 +229,7 @@ function kelompokkan(letak: LetakDus[], stok: StokDus[]) {
       sampel.push(dus)
       continue
     }
-    if (posisi && posisi.kolom !== null && posisi.tingkat !== null && jenis === "d") {
+    if (posisi && posisi.baris !== null && posisi.kolom !== null && posisi.tingkat !== null && jenis === "d") {
       const dalam = kedalaman(posisi, letak.filter((item) => golongan(item.kode) === "d"))
       terdalam = Math.max(terdalam, dalam ?? -1)
       const daftar = tingkat.get(dalam ?? 0) ?? []
