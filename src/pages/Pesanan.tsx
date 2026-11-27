@@ -145,16 +145,16 @@ export function Pesanan() {
                 const data = petaBarang.get(item.barangId)
                 if (!data) return null
                 return (
-                  <div key={item.barangId} className="flex items-center gap-3 px-4 py-3">
+                  <div key={item.barangId} className="flex items-center gap-1 px-2 py-2 md:gap-3 md:px-4 md:py-3">
                     <FotoBarang kecil={data.foto_kecil_url} penuh={data.foto_url} nama={data.model} />
                     <span className="min-w-0 flex-1">
                       <Badge tone={data.jenis}>{labelJenis(data.jenis)}</Badge>
                       <span className="mt-1 block truncate font-semibold">{data.model}</span>
-                      <LabelWarna nama={data.warna} className="block text-sm text-mist-500" />
+                      <LabelWarna nama={data.warna} className="block truncate text-sm text-mist-500" />
                     </span>
-                    <PengaturJumlah nilai={item.jumlah} min={1} max={100000} onUbah={(jumlah) => setBaris((sekarang) => sekarang.map((barisItem) => (barisItem.barangId === item.barangId ? { ...barisItem, jumlah } : barisItem)))} label={data.model} />
-                    <button type="button" className="grid h-11 w-11 place-items-center text-amber-400" aria-label={`Hapus ${data.model}`} onClick={() => setBaris((sekarang) => sekarang.filter((barisItem) => barisItem.barangId !== item.barangId))}>
-                      <Trash2 size={18} />
+                    <PengaturJumlah kecil nilai={item.jumlah} min={1} max={100000} onUbah={(jumlah) => setBaris((sekarang) => sekarang.map((barisItem) => (barisItem.barangId === item.barangId ? { ...barisItem, jumlah } : barisItem)))} label={data.model} />
+                    <button type="button" className="grid h-8 w-8 shrink-0 place-items-center text-amber-400 md:h-11 md:w-11" aria-label={`Hapus ${data.model}`} onClick={() => setBaris((sekarang) => sekarang.filter((barisItem) => barisItem.barangId !== item.barangId))}>
+                      <Trash2 className="size-4 md:size-[18px]" />
                     </button>
                   </div>
                 )
@@ -172,7 +172,6 @@ export function Pesanan() {
               <div className="flex w-max min-w-full justify-center px-3">
                 <BalokRencana grid={grid} kode={kodeDus} sorot={sorot} isi={isiSorot} />
               </div>
-              <p className="px-3 text-center text-xs text-mist-500">Oranye = dus yang dibuka. Ketuk dus oranye untuk melihat barang yang dikeluarkan. Geser untuk memutar. Ketuk area kosong agar dus lain transparan.</p>
             </div>
           )}
           {diLuar.length > 0 && (
