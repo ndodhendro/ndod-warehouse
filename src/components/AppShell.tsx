@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
-import { Box, Download, Handbag, ScrollText, UserRound } from "lucide-react"
+import { Box, ClipboardList, Download, Handbag, ScrollText, UserRound } from "lucide-react"
 import { usePasangAplikasi } from "../lib/pasang"
 import { DialogPembaruan, usePembaruanAplikasi } from "./PembaruanAplikasi"
 import { Sheet, cn } from "./ui"
@@ -8,6 +8,7 @@ import { Sheet, cn } from "./ui"
 const menu = [
   { to: "/dus", label: "Dus", icon: Box, end: false },
   { to: "/barang", label: "Barang", icon: Handbag, end: false },
+  { to: "/pesanan", label: "Pesanan", icon: ClipboardList, end: true },
   { to: "/riwayat", label: "Riwayat", icon: ScrollText, end: false },
   { to: "/profil", label: "Profil", icon: UserRound, end: true },
 ]
@@ -145,7 +146,7 @@ function MobileNav({ onPerbarui, onPasang }: { onPerbarui?: () => void; onPasang
       aria-label="Navigasi utama"
     >
       <AksiAplikasi onPerbarui={onPerbarui} onPasang={onPasang} className="px-3 pb-1 pt-1.5" />
-      <div className="mx-auto grid max-w-lg grid-cols-4 px-2">
+      <div className="mx-auto grid max-w-lg grid-cols-5 px-1">
         {menu.map((item) => (
           <ItemNav key={item.to} {...item} />
         ))}

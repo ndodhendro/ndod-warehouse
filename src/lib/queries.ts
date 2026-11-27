@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { getBarang, getDus, listBarang, listDus, listIsiDus, listRiwayat, listSebaran } from "./api"
+import { getBarang, getDus, listBarang, listDus, listIsiDus, listRiwayat, listSebaran, listStokDus, listSusunan } from "./api"
 import { supabaseConfigured } from "./supabase"
 
 const siap = supabaseConfigured()
@@ -47,4 +47,12 @@ export function useSebaran(id: string | undefined) {
 
 export function useRiwayat() {
   return useQuery({ queryKey: ["riwayat"], queryFn: listRiwayat, enabled: siap })
+}
+
+export function useSusunan() {
+  return useQuery({ queryKey: ["susunan"], queryFn: listSusunan, enabled: siap })
+}
+
+export function useStokDus() {
+  return useQuery({ queryKey: ["stok-dus"], queryFn: listStokDus, enabled: siap })
 }

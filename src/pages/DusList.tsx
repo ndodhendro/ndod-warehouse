@@ -32,7 +32,12 @@ export function DusList() {
         icon={Box}
         title="Dus"
         subtitle=""
-        action={<LinkButton to="/dus/baru" className="px-3"><Plus size={18} /> Dus</LinkButton>}
+        action={
+          <div className="flex gap-2">
+            <LinkButton to="/dus/susunan" variant="ghost" className="px-3">Susunan</LinkButton>
+            <LinkButton to="/dus/baru" className="px-3"><Plus size={18} /> Dus</LinkButton>
+          </div>
+        }
       />
       {!siap ? (
         <SetupCard />

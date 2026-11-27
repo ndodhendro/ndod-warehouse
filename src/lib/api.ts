@@ -373,3 +373,61 @@ export async function ambilSebaranEkspor() {
     .filter((baris): baris is BarisEkspor => baris !== null)
     .sort((a, b) => bandingKode(a.dus_kode, b.dus_kode) || bandingKode(a.barang_kode, b.barang_kode))
 }
+
+export type KolomSusunan = {
+  id: string
+  urutan: number
+  dusId: string[]
+}
+
+export type StokDusBaris = {
+  dusId: string
+  kode: string
+  barangId: string
+  jumlah: number
+}
+
+export async function listSusunan() {
+  const { data, error } = await db().from("susunan_kolom").select("id, urutan, susunan_dus(dus_id, tingkat)").order("urutan")
+  if (error) throw error
+  return ((data ?? []) as Row[]).map((row) => {
+    const isi = ((row.susunan_dus ?? []) as Row[])
+      .map((item) => ({ dusId: String(item.dus_id), tingkat: angka(item.tingkat) }))
+      .sort((a, b) => a.tingkat - b.tingkat)
+    return {
+      id: String(row.id),
+      urutan: angka(row.urutan),
+      dusId: isi.map((item) => item.dusId),
+    } satisfies KolomSusunan
+  })
+}
+
+export async function simpanSusunan(kolom: string[][]) {
+  const { error } = await db().rpc("simpan_susunan", { p_kolom: kolom })
+  if (error) throw error
+}
+
+export async function listStokDus() {
+  const { data, error } = await db().from("isi_dus").select("dus_id, barang_id, jumlah, dus:dus_id(kode)")
+  if (error) throw error
+  return ((data ?? []) as Row[])
+    .map((row) => {
+      const dus = objek<Row>(row.dus)
+      if (!dus) return null
+      return {
+        dusId: String(row.dus_id),
+        kode: String(dus.kode),
+        barangId: String(row.barang_id),
+        jumlah: angka(row.jumlah),
+      } satisfies StokDusBaris
+    })
+    .filter((baris): baris is StokDusBaris => baris !== null && baris.jumlah > 0)
+}
+
+export async function keluarkanPesanan(item: { dusId: string; barangId: string; jumlah: number }[]) {
+  const { error } = await db().rpc("keluarkan_banyak", {
+    p_item: item.map((baris) => ({ dus_id: baris.dusId, barang_id: baris.barangId, jumlah: baris.jumlah })),
+    p_keterangan: "Pesanan",
+  })
+  if (error) throw error
+}
